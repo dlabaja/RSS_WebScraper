@@ -1,0 +1,17 @@
+/home/dlabaja/RiderProjects/RSS/RSS/bin/Debug/net7.0/RSS
+/home/dlabaja/RiderProjects/RSS/RSS/bin/Debug/net7.0/RSS.deps.json
+/home/dlabaja/RiderProjects/RSS/RSS/bin/Debug/net7.0/RSS.runtimeconfig.json
+/home/dlabaja/RiderProjects/RSS/RSS/bin/Debug/net7.0/RSS.dll
+/home/dlabaja/RiderProjects/RSS/RSS/bin/Debug/net7.0/RSS.pdb
+/home/dlabaja/RiderProjects/RSS/RSS/bin/Debug/net7.0/HtmlAgilityPack.dll
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.csproj.AssemblyReference.cache
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.GeneratedMSBuildEditorConfig.editorconfig
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.AssemblyInfoInputs.cache
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.AssemblyInfo.cs
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.csproj.CoreCompileInputs.cache
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.csproj.CopyComplete
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.dll
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/refint/RSS.dll
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.pdb
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/RSS.genruntimeconfig.cache
+/home/dlabaja/RiderProjects/RSS/RSS/obj/Debug/net7.0/ref/RSS.dll
