@@ -49,13 +49,14 @@ public class Utils
 
     public static void SerializeXML<T>(string siteName, string username, object o)
     {
+        
         XmlSerializer serializer = new XmlSerializer(typeof(T));
         if (!Directory.Exists($"{saveLocation}/{siteName}"))
         {
             Directory.CreateDirectory($"{saveLocation}/{siteName}");
         }
 
-        using var writer = new StreamWriter($"{saveLocation}/{siteName}/{username}");
+        using var writer = new StreamWriter($"{saveLocation}/{siteName}/{username}.xml");
         serializer.Serialize(writer, o);
     }
 }

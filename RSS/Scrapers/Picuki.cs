@@ -7,7 +7,8 @@ public static class Picuki
     public static void ScrapePicuki(string username)
     {
         var doc = Utils.GetHTMLDocument($"https://www.picuki.com/profile/{username}").DocumentNode;
-
+        var rss = new RSS();
+        
         var channel = new Channel{
             Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
             Link = $"https://www.picuki.com/profile/{username}",
@@ -26,23 +27,34 @@ public static class Picuki
             var item = new Item{
                 Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim(),
                 Link = channel.Link,
-                Description = doc.SelectNodes("//span[@class='icon-globe-alt']//a")[i].InnerText,
-                PubDate = doc.SelectNodes("//div[@class='time']//span")[i].InnerText,
-                /*Image = new Image{
+                Description = new DescriptionBuilder()
+                    .AddSpan(doc.SelectNodes("//span[@class='icon-globe-alt']//a")[i].InnerText)
+                    .AddImage(doc.SelectNodes("//div[@class='photo']/a/img")[i].GetAttributeValue("src", ""))
+                    .ToString()
+                //PubDate = doc.SelectNodes("//div[@class='time']//span")[i].InnerText,
+                /*MediaContent = new MediaContent{
+                    Medium = "image",
                     Url = doc.SelectNodes("//div[@class='photo']/a/img")[i].GetAttributeValue("src", ""),
-                    Link = channel.Link,
-                    Title = channel.Title
+                    Width = 1000,
+                    Height = 1000
                 }*/
             };
 
             channel.Items.Add(item);
+            rss.Channel = channel;
             
-            Utils.SerializeXML<Channel>("picuki", username, channel);
+            Utils.SerializeXML<RSS>("picuki", username, rss);
         }
     }
 }
 
-[XmlRoot("channel")]
+[XmlRoot("rss")]
+public class RSS
+{
+    [XmlElement("channel")]
+    public Channel Channel { get; set; }
+}
+
 public class Channel
 {
     [XmlElement("title")]
@@ -88,21 +100,6 @@ public class AtomLink
     public string Type { get; } = "application/rss+xml";
 }
 
-public class MediaContent
-{
-    [XmlAttribute("medium")]
-    public string Medium { get; set; }
-
-    [XmlAttribute("url")]
-    public string Url { get; set; }
-
-    [XmlAttribute("width")]
-    public int Width { get; set; }
-
-    [XmlAttribute("height")]
-    public int Height { get; set; }
-}
-
 public class Item
 {
     [XmlElement("title")]
@@ -111,12 +108,9 @@ public class Item
     [XmlElement("link")]
     public string Link { get; set; }
 
-    [XmlElement("media:content")]
-    public MediaContent MediaContent { get; set; }
-
     [XmlElement("description")]
     public string Description { get; set; }
 
-    [XmlElement("pubDate")]
-    public string PubDate { get; set; }
+    /*[XmlElement("pubDate")]
+    public string PubDate { get; set; }*/
 }
