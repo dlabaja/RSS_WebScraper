@@ -1,5 +1,9 @@
 # Common IntelliJ Platform excludes
 
+.idea
+RSS/bin
+RSS/obj
+
 # User specific
 **/.idea/**/workspace.xml
 **/.idea/**/tasks.xml
@@ -9,7 +13,7 @@
 
 # Sensitive or high-churn files
 **/.idea/**/dataSources/
-**/.idea/**/dataSources.ids
+**/.idea/**/dataSources.ids/home/dlabaja/RiderProjects/RSS/.gitignore
 **/.idea/**/dataSources.xml
 **/.idea/**/dataSources.local.xml
 **/.idea/**/sqlDataSources.xml
