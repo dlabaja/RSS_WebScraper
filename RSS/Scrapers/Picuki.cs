@@ -1,3 +1,5 @@
+using HtmlAgilityPack;
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 
 namespace RSS.Scrapers;
@@ -6,9 +8,10 @@ public static class Picuki
 {
     public static void ScrapePicuki(string username)
     {
+        Console.WriteLine($"Scraping {username}");
         var doc = Utils.GetHTMLDocument($"https://www.picuki.com/profile/{username}").DocumentNode;
         var rss = new RSS();
-        
+
         var channel = new Channel{
             Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
             Link = $"https://www.picuki.com/profile/{username}",
@@ -22,29 +25,55 @@ public static class Picuki
             Link = channel.Link
         };
 
-        for (int i = 0; i < doc.SelectNodes("//div[@class='box-photo']").Count; i++)
+        foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='photo']/a").Select(x => x.GetAttributeValue("href", "")).WithIndex())
         {
-            var item = new Item{
-                Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim(),
-                Link = channel.Link,
-                Description = new DescriptionBuilder()
-                    .AddSpan(doc.SelectNodes("//span[@class='icon-globe-alt']//a")[i].InnerText)
-                    .AddImage(doc.SelectNodes("//div[@class='photo']/a/img")[i].GetAttributeValue("src", ""))
-                    .ToString()
-                //PubDate = doc.SelectNodes("//div[@class='time']//span")[i].InnerText,
-                /*MediaContent = new MediaContent{
-                    Medium = "image",
-                    Url = doc.SelectNodes("//div[@class='photo']/a/img")[i].GetAttributeValue("src", ""),
-                    Width = 1000,
-                    Height = 1000
-                }*/
-            };
+            Console.WriteLine($"Scraping post {i + 1}/12");
+            var post = Utils.GetHTMLDocument(postUrl).DocumentNode;
+
+            var item = new Item();
+            item.Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim();
+            item.Link = channel.Link;
+            item.Author = username;
+
+            var d = new DescriptionBuilder()
+                .AddSpan($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]").InnerText.Trim() ?? "None"}") // location
+                .AddSpan(post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText) // likes
+                .AddSpan($"{post.SelectSingleNode("//span[@id='commentsCount']").InnerText} comments"); // commentsCount;
+            try
+            {
+                d.AddImage(post.SelectSingleNode("//img[@id='image-photo']").GetAttributeValue("src", ""));
+                var id = Regex.Match(postUrl, @"\/media\/(\d+)").Groups[1].ToString();
+                
+                Utils.DownloadImage(post.SelectSingleNode("//img[@id='image-photo']").GetAttributeValue("src", ""), $"{Utils.saveLocation}/picuki/{username}/images", id);
+            }
+            catch
+            {
+                // albums
+            }
+
+            d.AddComments(ScrapeComments(post));
+
+            item.Description = d.ToString();
 
             channel.Items.Add(item);
-            rss.Channel = channel;
-            
-            Utils.SerializeXML<RSS>("picuki", username, rss);
         }
+
+        rss.Channel = channel;
+        Utils.SerializeXML<RSS>("picuki", username, rss);
+    }
+
+    private static (List<string> usernames, List<string> messages) ScrapeComments(HtmlNode post)
+    {
+        var usernames = new List<string>();
+        var messages = new List<string>();
+
+        for (int i = 0; i < post.SelectNodes("//div[@class='comment']").Count; i++)
+        {
+            usernames.Add(post.SelectNodes("//div[@class='comment-user-nickname']/a")[i].InnerText);
+            messages.Add(post.SelectNodes("//div[@class='comment-text']")[i].InnerText);
+        }
+
+        return new ValueTuple<List<string>, List<string>>(usernames, messages);
     }
 }
 
@@ -68,9 +97,6 @@ public class Channel
 
     [XmlElement("image")]
     public Image Image { get; set; }
-    
-    [XmlElement("atom:link")]
-    public AtomLink AtomLink { get; set; }
 
     [XmlElement("item")]
     public List<Item> Items { get; set; }
@@ -88,18 +114,6 @@ public class Image
     public string Link { get; set; }
 }
 
-public class AtomLink
-{
-    [XmlElement("href")]
-    public string Href { get; set; }
-
-    [XmlElement("rel")]
-    public string Rel { get; } = "self";
-    
-    [XmlElement("type")]
-    public string Type { get; } = "application/rss+xml";
-}
-
 public class Item
 {
     [XmlElement("title")]
@@ -110,6 +124,9 @@ public class Item
 
     [XmlElement("description")]
     public string Description { get; set; }
+
+    [XmlElement("author")]
+    public string Author { get; set; }
 
     /*[XmlElement("pubDate")]
     public string PubDate { get; set; }*/

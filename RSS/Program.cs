@@ -4,6 +4,7 @@ public class Program
 {
     private static void Main(string[] args)
     {
-        Scrapers.Picuki.ScrapePicuki("tmbkofficial");
+        //Scrapers.Picuki.ScrapePicuki("tmbkofficial");
+        new Server();
     }
 }

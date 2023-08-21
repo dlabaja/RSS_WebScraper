@@ -13,7 +13,7 @@ public class DescriptionBuilder
 
     public DescriptionBuilder AddSpan(string text)
     {
-        Description.Append($"<span>{text}</span>");
+        Description.Append($"<span>{text}</span><br>");
         return this;
     }
 
@@ -27,13 +27,21 @@ public class DescriptionBuilder
     public DescriptionBuilder AddImage(string url)
     {
         //  <img src="img_girl.jpg" alt="Girl in a jacket" width="500" height="600"> 
-        Description.Append($"<img src='{url}'>");
+        Description.Append($"<img src=\"{url.Replace("%7C", "|")}\">");
+        return this;
+    }
+
+    public DescriptionBuilder AddComments((List<string> usernames, List<string> messages) comments)
+    {
+        for (int i = 0; i < comments.usernames.Count; i++)
+        {
+            AddParagraph($"<b>{comments.usernames[i].Trim()}</b><br>{comments.messages[i].Trim()}");
+        }
         return this;
     }
 
     public override string ToString()
     {
-        Description.Append("]]>");
         return Description.ToString();
     }
 }
