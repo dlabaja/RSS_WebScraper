@@ -1,65 +1,84 @@
 using HtmlAgilityPack;
+using RSS.Builders;
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 
 namespace RSS.Scrapers;
 
-public static class Picuki
+public class Picuki : Website
 {
-    public static void ScrapePicuki(string username)
+    public Picuki(string link, string username, string siteName) : base(link, username, siteName)
     {
-        Console.WriteLine($"Scraping {username}");
-        var doc = Utils.GetHTMLDocument($"https://www.picuki.com/profile/{username}").DocumentNode;
-        var rss = new RSS();
+        Console.WriteLine($"----\nScraping {username}");
+        var doc = Utils.GetHTMLDocument($"{link}/{username}").DocumentNode;
 
-        var channel = new Channel{
-            Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
-            Link = $"https://www.picuki.com/profile/{username}",
-            Items = new List<Item>(),
-            Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
+        var rss = new RSS{
+            Channel = new Channel{
+                Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
+                Link = $"{link}/{username}",
+                Items = new List<Item>(),
+                Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
+            }
         };
 
-        channel.Image = new Image{
-            Url = doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""),
-            Title = channel.Title,
-            Link = channel.Link
+        Utils.DownloadImage(doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), imgFolder, "favicon");
+        rss.Channel.Image = new Image{
+            Url = $"{Config.Url}/{this.siteName}/{username}/images/favicon.png",
+            Title = rss.Channel.Title,
+            Link = rss.Channel.Link
         };
 
+        if (File.Exists($"{usernameFolder}/rss.xml"))
+        {
+            rss = Utils.DeserializeXML($"{usernameFolder}/rss.xml");
+        }
+
+        var count = doc.SelectNodes("//div[@class='photo']/a").Count;
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='photo']/a").Select(x => x.GetAttributeValue("href", "")).WithIndex())
         {
-            Console.WriteLine($"Scraping post {i + 1}/12");
             var post = Utils.GetHTMLDocument(postUrl).DocumentNode;
+
+            var id = Regex.Match(postUrl, @"\/media\/(\d+)").Groups[1].ToString();
+            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            {
+                Console.WriteLine($"Post {i + 1}/{count} already scraped");
+                continue;
+            }
+            Console.WriteLine($"Scraping post {i + 1}/{count}");
 
             var item = new Item();
             item.Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim();
-            item.Link = channel.Link;
+            item.Link = rss.Channel.Link;
             item.Author = username;
+            item.GUID = id;
 
-            var d = new DescriptionBuilder()
-                .AddSpan($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]").InnerText.Trim() ?? "None"}") // location
-                .AddSpan(post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText) // likes
+            var d = new DescriptionBuilder();
+            try
+            {
+                d.AddSpan($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]").InnerText.Trim()}"); // location
+            }
+            catch {}
+            
+            d.AddSpan(post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText) // likes
                 .AddSpan($"{post.SelectSingleNode("//span[@id='commentsCount']").InnerText} comments"); // commentsCount;
             try
             {
-                d.AddImage(post.SelectSingleNode("//img[@id='image-photo']").GetAttributeValue("src", ""));
-                var id = Regex.Match(postUrl, @"\/media\/(\d+)").Groups[1].ToString();
-                
-                Utils.DownloadImage(post.SelectSingleNode("//img[@id='image-photo']").GetAttributeValue("src", ""), $"{Utils.saveLocation}/picuki/{username}/images", id);
+                Utils.DownloadImage(post.SelectSingleNode("//img[@id='image-photo']").GetAttributeValue("src", ""), imgFolder, id);
+                d.AddImage($"{Config.Url}/{this.siteName}/{username}/images/{id}.png");
             }
             catch
             {
-                // albums
+                // todo albums
             }
 
             d.AddComments(ScrapeComments(post));
-
             item.Description = d.ToString();
+            item.PubDate = TimeBuilder.ParsePicukiTime(post.SelectSingleNode("//div[@class='single-photo-time']").InnerText);
 
-            channel.Items.Add(item);
+            rss.Channel.Items.Add(item);
         }
 
-        rss.Channel = channel;
-        Utils.SerializeXML<RSS>("picuki", username, rss);
+        Utils.SerializeXML<RSS>(usernameFolder, rss);
     }
 
     private static (List<string> usernames, List<string> messages) ScrapeComments(HtmlNode post)
@@ -67,67 +86,16 @@ public static class Picuki
         var usernames = new List<string>();
         var messages = new List<string>();
 
-        for (int i = 0; i < post.SelectNodes("//div[@class='comment']").Count; i++)
+        try
         {
-            usernames.Add(post.SelectNodes("//div[@class='comment-user-nickname']/a")[i].InnerText);
-            messages.Add(post.SelectNodes("//div[@class='comment-text']")[i].InnerText);
+            for (int i = 0; i < post.SelectNodes("//div[@class='comment']").Count; i++)
+            {
+                usernames.Add(post.SelectNodes("//div[@class='comment-user-nickname']/a")[i].InnerText);
+                messages.Add(post.SelectNodes("//div[@class='comment-text']")[i].InnerText);
+            }
         }
+        catch {}
 
         return new ValueTuple<List<string>, List<string>>(usernames, messages);
     }
-}
-
-[XmlRoot("rss")]
-public class RSS
-{
-    [XmlElement("channel")]
-    public Channel Channel { get; set; }
-}
-
-public class Channel
-{
-    [XmlElement("title")]
-    public string Title { get; set; }
-
-    [XmlElement("description")]
-    public string Description { get; set; }
-
-    [XmlElement("link")]
-    public string Link { get; set; }
-
-    [XmlElement("image")]
-    public Image Image { get; set; }
-
-    [XmlElement("item")]
-    public List<Item> Items { get; set; }
-}
-
-public class Image
-{
-    [XmlElement("url")]
-    public string Url { get; set; }
-
-    [XmlElement("title")]
-    public string Title { get; set; }
-
-    [XmlElement("link")]
-    public string Link { get; set; }
-}
-
-public class Item
-{
-    [XmlElement("title")]
-    public string Title { get; set; }
-
-    [XmlElement("link")]
-    public string Link { get; set; }
-
-    [XmlElement("description")]
-    public string Description { get; set; }
-
-    [XmlElement("author")]
-    public string Author { get; set; }
-
-    /*[XmlElement("pubDate")]
-    public string PubDate { get; set; }*/
 }

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace RSS;
+namespace RSS.Builders;
 
 public class DescriptionBuilder
 {
@@ -26,8 +26,7 @@ public class DescriptionBuilder
 
     public DescriptionBuilder AddImage(string url)
     {
-        //  <img src="img_girl.jpg" alt="Girl in a jacket" width="500" height="600"> 
-        Description.Append($"<img src=\"{url.Replace("%7C", "|")}\">");
+        Description.Append($"<img src=\"{url.Replace("%7C", "|")}\" width=\"5000\" height=\"6000\">");
         return this;
     }
 

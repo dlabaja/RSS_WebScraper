@@ -2,7 +2,10 @@ using System.Text.Json;
 using System;
 using System.Net.Http;
 using HtmlAgilityPack;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
@@ -11,16 +14,13 @@ namespace RSS;
 
 public class Utils
 {
-    public static string saveLocation = "/home/dlabaja/Documents/RSS";
-    private const string curlImpersonateScriptLocation = "/home/dlabaja/.curl-impersonate/curl_ff109";
-
     public static HtmlDocument GetHTMLDocument(string url)
     {
         // create new curl-impersonate process
         var process = new Process{
             StartInfo = new ProcessStartInfo{
                 FileName = "/bin/bash",
-                Arguments = $"{curlImpersonateScriptLocation} {url}",
+                Arguments = $"{Config.CurlImpersonateScriptLocation} {url}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -54,7 +54,7 @@ public class Utils
         var process = new Process{
             StartInfo = new ProcessStartInfo{
                 FileName = "/bin/bash",
-                Arguments = $"{curlImpersonateScriptLocation} \"{url}\" --output \"{path}/{id}.png\"",
+                Arguments = $"{Config.CurlImpersonateScriptLocation} \"{url}\" --output \"{path}/{id}.png\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -77,14 +77,14 @@ public class Utils
         process.WaitForExit();
     }
 
-    public static void SerializeXML<T>(string siteName, string username, object o)
+    public static void SerializeXML<T>( string usernameFolder, object o)
     {
         XmlSerializer serializer = new XmlSerializer(typeof(T));
-        var filePath = $"{saveLocation}/{siteName}/{username}/{username}.xml";
+        var filePath = $"{usernameFolder}/rss.xml";
 
-        if (!Directory.Exists($"{saveLocation}/{siteName}/{username}"))
+        if (!Directory.Exists($"{usernameFolder}"))
         {
-            Directory.CreateDirectory($"{saveLocation}/{siteName}/{username}");
+            Directory.CreateDirectory($"{usernameFolder}");
         }
 
         using var writer = new StreamWriter(filePath);
@@ -94,12 +94,26 @@ public class Utils
         doc.Load(filePath);
         
         // todo najít způsob jak tam ten atribut přidat ještě před serializací
-        XmlAttribute versionAttribute = doc.CreateAttribute("version");
+        var versionAttribute = doc.CreateAttribute("version");
         versionAttribute.Value = "2.0";
         doc.SelectSingleNode("//rss")?.Attributes?.Append(versionAttribute);
+        
+        var permaLinkAttribute = doc.CreateAttribute("isPermaLink");
+        permaLinkAttribute.Value = "false";
+        doc.SelectSingleNode("//item/guid")?.Attributes?.Append(permaLinkAttribute);
+        
         doc.Save(filePath);
 
         Console.WriteLine($"RSS file serialized as {filePath}");
+    }
+
+    public static RSS DeserializeXML(string path)
+    {
+        var xmlData = File.ReadAllText(path);
+        var serializer = new XmlSerializer(typeof(RSS));
+
+        using StringReader reader = new StringReader(xmlData);
+        return (RSS)serializer.Deserialize(reader)!;
     }
 }
 
