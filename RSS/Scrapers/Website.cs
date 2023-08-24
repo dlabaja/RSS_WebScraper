@@ -1,5 +1,3 @@
-using HtmlAgilityPack;
-
 namespace RSS.Scrapers;
 
 public class Website
@@ -12,16 +10,18 @@ public class Website
     protected string link;
     public string username;
 
-    protected Website(string link, string username, string siteName)
+    public Website(string username)
     {
-        this.link = link;
-        this.siteName = siteName;
         this.username = username;
-        
+
         appFolder = $"{Directory.GetCurrentDirectory()}/{this.siteName}";
         usernameFolder = $"{appFolder}/{username}";
         imgFolder = $"{usernameFolder}/images";
-        
+
         Directory.CreateDirectory(imgFolder);
+    }
+
+    public virtual void Scrape()
+    {
     }
 }

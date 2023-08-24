@@ -1,13 +1,12 @@
 using HtmlAgilityPack;
 using RSS.Builders;
 using System.Text.RegularExpressions;
-using System.Xml.Serialization;
 
 namespace RSS.Scrapers;
 
 public class Picuki : Website
 {
-    public Picuki(string link, string username, string siteName) : base(link, username, siteName)
+    public override void Scrape()
     {
         Console.WriteLine($"----\nScraping {username}");
         var doc = Utils.GetHTMLDocument($"{link}/{username}").DocumentNode;
@@ -97,5 +96,12 @@ public class Picuki : Website
         catch {}
 
         return new ValueTuple<List<string>, List<string>>(usernames, messages);
+    }
+
+    public Picuki(string username) : base(username)
+    {
+        this.username = username;
+        link = "https://www.picuki.com/profile/tmbkofficial";
+        siteName = "picuki";
     }
 }
