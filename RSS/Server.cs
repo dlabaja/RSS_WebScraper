@@ -30,12 +30,16 @@ public class Server
             
             Console.WriteLine(req.Url?.ToString());
 
-            var path = $"{Directory.GetCurrentDirectory()}{req.Url?.LocalPath}";
-            if (File.GetAttributes(path) != FileAttributes.Directory)
+            try
             {
-                var data = await File.ReadAllBytesAsync(path);
-                await resp.OutputStream.WriteAsync(data, 0, data.Length);
+                var path = $"{Directory.GetCurrentDirectory()}{req.Url?.LocalPath}";
+                if (File.GetAttributes(path) != FileAttributes.Directory)
+                {
+                    var data = await File.ReadAllBytesAsync(path);
+                    await resp.OutputStream.WriteAsync(data, 0, data.Length);
+                }
             }
+            catch{}
 
             resp.Close();
         }

@@ -5,23 +5,19 @@ public class Website
     protected string appFolder;
     protected string usernameFolder;
     protected string imgFolder;
+    protected string relativeImgFolder;
 
     public string siteName;
     protected string link;
     public string username;
 
-    public Website(string username)
+    protected void LoadSiteData()
     {
-        this.username = username;
-
-        appFolder = $"{Directory.GetCurrentDirectory()}/{this.siteName}";
+        appFolder = $"{Directory.GetCurrentDirectory()}/{siteName}";
         usernameFolder = $"{appFolder}/{username}";
         imgFolder = $"{usernameFolder}/images";
+        relativeImgFolder = $"{siteName}/{username}/images";
 
         Directory.CreateDirectory(imgFolder);
-    }
-
-    public virtual void Scrape()
-    {
     }
 }

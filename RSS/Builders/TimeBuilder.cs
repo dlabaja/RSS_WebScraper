@@ -21,6 +21,15 @@ public static class TimeBuilder
         var dateTime = DateTime.Now - TimeSpan.FromMinutes(minutesToRemove);
         
         // Thu, 27 Apr 2006
-        return dateTime.ToString("ddd, dd MMM yyyy hh:mm:ss K", CultureInfo.InvariantCulture);
+        return dateTime.ToString("ddd, dd MMM yyyy HH:mm:ss K", CultureInfo.InvariantCulture);
+    }
+
+    public static string ParseNitterTime(string time)
+    {
+        time = time.Replace("·", "");
+        time = time.Replace("UTC", "");
+
+        var dateTime = DateTime.Parse(time);
+        return dateTime.ToString("ddd, dd MMM yyyy HH:mm:ss", CultureInfo.InvariantCulture);
     }
 }

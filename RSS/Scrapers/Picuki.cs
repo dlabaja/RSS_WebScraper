@@ -6,9 +6,8 @@ namespace RSS.Scrapers;
 
 public class Picuki : Website
 {
-    public override void Scrape()
+    public void Scrape()
     {
-        Console.WriteLine($"----\nScraping {username}");
         var doc = Utils.GetHTMLDocument($"{link}/{username}").DocumentNode;
 
         var rss = new RSS{
@@ -19,10 +18,11 @@ public class Picuki : Website
                 Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
             }
         };
-
-        Utils.DownloadImage(doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), imgFolder, "favicon");
+        
         rss.Channel.Image = new Image{
-            Url = $"{Config.Url}/{this.siteName}/{username}/images/favicon.png",
+            //Url = $"{Config.Url}/{this.siteName}/{username}/images/favicon.png",
+            Url = new DescriptionBuilder()
+                .AddImage(doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), relativeImgFolder, "favicon").ToString(),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
@@ -35,44 +35,31 @@ public class Picuki : Website
         var count = doc.SelectNodes("//div[@class='photo']/a").Count;
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='photo']/a").Select(x => x.GetAttributeValue("href", "")).WithIndex())
         {
-            var post = Utils.GetHTMLDocument(postUrl).DocumentNode;
-
             var id = Regex.Match(postUrl, @"\/media\/(\d+)").Groups[1].ToString();
             if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
                 Console.WriteLine($"Post {i + 1}/{count} already scraped");
                 continue;
             }
+
+            var post = Utils.GetHTMLDocument(postUrl).DocumentNode;
+
             Console.WriteLine($"Scraping post {i + 1}/{count}");
+            //todo downloadImage
 
-            var item = new Item();
-            item.Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim();
-            item.Link = rss.Channel.Link;
-            item.Author = username;
-            item.GUID = id;
-
-            var d = new DescriptionBuilder();
-            try
-            {
-                d.AddSpan($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]").InnerText.Trim()}"); // location
-            }
-            catch {}
-            
-            d.AddSpan(post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText) // likes
-                .AddSpan($"{post.SelectSingleNode("//span[@id='commentsCount']").InnerText} comments"); // commentsCount;
-            try
-            {
-                Utils.DownloadImage(post.SelectSingleNode("//img[@id='image-photo']").GetAttributeValue("src", ""), imgFolder, id);
-                d.AddImage($"{Config.Url}/{this.siteName}/{username}/images/{id}.png");
-            }
-            catch
-            {
-                // todo albums
-            }
-
-            d.AddComments(ScrapeComments(post));
-            item.Description = d.ToString();
-            item.PubDate = TimeBuilder.ParsePicukiTime(post.SelectSingleNode("//div[@class='single-photo-time']").InnerText);
+            var item = new Item{
+                Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim(),
+                Link = rss.Channel.Link,
+                Author = username,
+                PubDate = TimeBuilder.ParsePicukiTime(post.SelectSingleNode("//div[@class='single-photo-time']").InnerText),
+                GUID = id,
+                Description = new DescriptionBuilder()
+                    .AddSpan($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]").InnerText.Trim()}") // location
+                    .AddSpan(post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText) // likes
+                    .AddSpan($"{post.SelectSingleNode("//span[@id='commentsCount']").InnerText} comments") // commentsCount;
+                    //.AddImage($"{Config.Url}/{siteName}/{username}/images/{id}.png")
+                    .AddComments(ScrapeComments(post)).ToString()
+            };
 
             rss.Channel.Items.Add(item);
         }
@@ -80,7 +67,7 @@ public class Picuki : Website
         Utils.SerializeXML<RSS>(usernameFolder, rss);
     }
 
-    private static (List<string> usernames, List<string> messages) ScrapeComments(HtmlNode post)
+    private static (List<string> usernames, List<string> messages) ScrapeComments(HtmlAgilityPack.HtmlNode post)
     {
         var usernames = new List<string>();
         var messages = new List<string>();
@@ -98,10 +85,12 @@ public class Picuki : Website
         return new ValueTuple<List<string>, List<string>>(usernames, messages);
     }
 
-    public Picuki(string username) : base(username)
+    public Picuki(string username)
     {
         this.username = username;
-        link = "https://www.picuki.com/profile/tmbkofficial";
+        link = "https://www.picuki.com/profile";
         siteName = "picuki";
+
+        LoadSiteData();
     }
 }

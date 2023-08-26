@@ -9,11 +9,12 @@ public static class Program
     {
         var siteNameToFunc = new Dictionary<string, Action>{
             {"picuki", () => new Picuki(username).Scrape()},
-            {"nitter", () => new Picuki(username).Scrape()}
+            {"nitter", () => new Nitter(username).Scrape()}
         };
 
         try
         {
+            Console.WriteLine($"----\nScraping {username}");
             siteNameToFunc[siteName]();
         }
         catch (KeyNotFoundException _)
@@ -25,7 +26,7 @@ public static class Program
     private static void Main()
     {
         Config.LoadConfig();
-        new Thread(o => new Server());
+        new Thread(o => new Server()).Start();
 
         foreach (var item in Config.SitesAndUsernames)
         {

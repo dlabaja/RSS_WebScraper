@@ -18,6 +18,10 @@ public static class Config
         try
         {
             Url = root.GetProperty("Url").GetString() ?? throw new Exception("Invalid URL");
+            if (Url.EndsWith("/"))
+            {
+                Url.Remove(Url.Length - 1);
+            }
             CurlImpersonateScriptLocation = root.GetProperty("CurlImpersonateScriptLocation").GetString()
                                             ?? throw new Exception("Invalid CurlImpersonateScriptLocation");
 
