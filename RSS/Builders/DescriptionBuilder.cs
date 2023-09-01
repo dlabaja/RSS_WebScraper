@@ -1,4 +1,3 @@
-using HtmlAgilityPack;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -8,32 +7,42 @@ namespace RSS.Builders;
 public class DescriptionBuilder
 {
     private StringBuilder Description = new StringBuilder();
+    private Media media;
 
-    public DescriptionBuilder()
+    public DescriptionBuilder(Media media)
     {
         Description.Append("<![CDATA[");
+        this.media = media;
     }
 
-    public DescriptionBuilder AddSpan(string text)
+    public DescriptionBuilder AddSpan(string text, bool addBreak = true)
     {
         try
         {
-            Description.Append($"<span>{RemoveTags(text)}</span><br>");
+            Description.Append($"<span>{text}</span>");
+            if (addBreak) Description.Append("<br>");
         }
         catch {}
 
         return this;
     }
 
-    public DescriptionBuilder AddSpanOrNot(string text, bool addIf)
+    public DescriptionBuilder AddSpanOrEmpty(string text, bool addIf, bool addBreak = true)
     {
         if (!addIf) return this;
         try
         {
-            Description.Append($"<span>{RemoveTags(text)}</span><br>");
+            Description.Append($"<span>{text}</span>");
+            if (addBreak) Description.Append("<br>");
         }
         catch {}
 
+        return this;
+    }
+
+    public DescriptionBuilder AddBreak()
+    {
+        Description.Append("<br>");
         return this;
     }
 
@@ -49,64 +58,34 @@ public class DescriptionBuilder
         return this;
     }
 
-    public DescriptionBuilder AddImage(string url, string relativeImgFolder, string id)
+    public DescriptionBuilder AddImage(string id, string url, string relativeMediaFolder)
     {
-        try
-        {
-            DownloadImage(url, $"{Directory.GetCurrentDirectory()}/{relativeImgFolder}", id);
-            Description.Append($"<img src=\"{Config.Url}/{relativeImgFolder}/{id}\">");
-        }
-        catch {}
+        media.Add(id, url);
+        Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}\"><br>");
 
         return this;
     }
 
-    public DescriptionBuilder AddImages(IEnumerable<string> urls, string relativeImgFolder, string id)
+    public DescriptionBuilder AddImages(string id, IEnumerable<string> urls, string relativeMediaFolder)
     {
-        try
+        foreach (var url in urls)
         {
-            foreach (var (url, i) in urls.WithIndex())
-            {
-                try
-                {
-                    DownloadImage(url, $"{Directory.GetCurrentDirectory()}/{relativeImgFolder}", $"{id}_{i}");
-                    Description.Append($"<img src=\"{Config.Url}/{relativeImgFolder}/{id}_{i}\">");
-                }
-                catch {}
-            }
+            media.Add(id, url);
+            Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}\"><br>");
         }
-        catch {}
 
         return this;
     }
 
-    private static void DownloadImage(string url, string path, string id)
+    public DescriptionBuilder AddVideos(string id, IEnumerable<string> urls, string relativeMediaFolder)
     {
-        // create new curl-impersonate process
-        var process = new Process{
-            StartInfo = new ProcessStartInfo{
-                FileName = "/bin/bash",
-                Arguments = $"{Config.CurlImpersonateScriptLocation} \"{url}\" --output \"{path}/{id}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            },
-            EnableRaisingEvents = true
-        };
-
-        var output = new StringBuilder();
-        process.OutputDataReceived += (_, e) =>
+        foreach (var url in urls)
         {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                output.Append(e.Data);
-            }
-        };
+            media.Add(id, url);
+            Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}'></video><br>");
+        }
 
-        process.Start();
-        process.BeginOutputReadLine();
-        process.WaitForExit();
+        return this;
     }
 
     public DescriptionBuilder AddComments((List<string> usernames, List<string> messages) comments)
@@ -115,7 +94,7 @@ public class DescriptionBuilder
         {
             for (int i = 0; i < comments.usernames.Count; i++)
             {
-                AddParagraph($"<b>{comments.usernames[i].Trim()}</b><br>{comments.messages[i].Trim()}");
+                Description.Append($"<p><b>{comments.usernames[i].Trim()}</b><br>{comments.messages[i].Trim()}</p>");
             }
         }
         catch {}
@@ -123,7 +102,8 @@ public class DescriptionBuilder
         return this;
     }
 
-    private string RemoveTags(string input) => Regex.Replace(input, @"<[^>]*>", "");
+
+    private static string RemoveTags(string input) => Regex.Replace(input, @"<[^>]*>", "");
 
     public override string ToString()
     {

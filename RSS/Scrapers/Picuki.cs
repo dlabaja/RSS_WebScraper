@@ -1,4 +1,3 @@
-using HtmlAgilityPack;
 using RSS.Builders;
 using System.Text.RegularExpressions;
 
@@ -8,6 +7,7 @@ public class Picuki : Website
 {
     public void Scrape()
     {
+        var media = new Media(siteName, username);
         var doc = Utils.GetHTMLDocument($"{link}/{username}").DocumentNode;
 
         var rss = new RSS{
@@ -18,18 +18,17 @@ public class Picuki : Website
                 Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
             }
         };
-        
+
         rss.Channel.Image = new Image{
-            //Url = $"{Config.Url}/{this.siteName}/{username}/images/favicon.png",
-            Url = new DescriptionBuilder()
+            Url = new DescriptionBuilder(media)
                 .AddImage(doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), relativeImgFolder, "favicon").ToString(),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
 
-        if (File.Exists($"{usernameFolder}/rss.xml"))
+        if (File.Exists(Path.Combine(usernameFolder, "rss.xml")))
         {
-            rss = Utils.DeserializeXML($"{usernameFolder}/rss.xml");
+            rss = Utils.DeserializeXML(Path.Combine(usernameFolder, "rss.xml"));
         }
 
         var count = doc.SelectNodes("//div[@class='photo']/a").Count;
@@ -45,7 +44,6 @@ public class Picuki : Website
             var post = Utils.GetHTMLDocument(postUrl).DocumentNode;
 
             Console.WriteLine($"Scraping post {i + 1}/{count}");
-            //todo downloadImage
 
             var item = new Item{
                 Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim(),
@@ -53,11 +51,15 @@ public class Picuki : Website
                 Author = username,
                 PubDate = TimeBuilder.ParsePicukiTime(post.SelectSingleNode("//div[@class='single-photo-time']").InnerText),
                 GUID = id,
-                Description = new DescriptionBuilder()
-                    .AddSpan($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]").InnerText.Trim()}") // location
-                    .AddSpan(post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText) // likes
-                    .AddSpan($"{post.SelectSingleNode("//span[@id='commentsCount']").InnerText} comments") // commentsCount;
-                    //.AddImage($"{Config.Url}/{siteName}/{username}/images/{id}.png")
+                Description = new DescriptionBuilder(media)
+                    .AddSpanOrEmpty($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim()}",
+                        !string.IsNullOrEmpty(post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim())) // location
+                    .AddSpan($"💬 {post.SelectSingleNode("//span[@id='commentsCount']").InnerText}") // commentsCount;
+                    .AddSpan($"❤️ {post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText.Replace("likes", "")}  ") // likes
+                    .AddImages(id, post.SelectNodes("//div[@class='item']/img | //div[@class='single-photo']/img")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
+                        relativeImgFolder)
+                    .AddVideos(id, post.SelectNodes("//div[@class='item']/video/source | //div[@class='single-photo']/video")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
+                        relativeImgFolder)
                     .AddComments(ScrapeComments(post)).ToString()
             };
 
@@ -65,6 +67,7 @@ public class Picuki : Website
         }
 
         Utils.SerializeXML<RSS>(usernameFolder, rss);
+        media.DownloadAllMedia();
     }
 
     private static (List<string> usernames, List<string> messages) ScrapeComments(HtmlAgilityPack.HtmlNode post)

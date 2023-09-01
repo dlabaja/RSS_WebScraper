@@ -1,5 +1,5 @@
 ﻿using RSS.Scrapers;
-using System.Reflection;
+using StreamWriter = System.IO.StreamWriter;
 
 namespace RSS;
 
@@ -14,7 +14,7 @@ public static class Program
 
         try
         {
-            Console.WriteLine($"----\nScraping {username}");
+            Console.WriteLine($"----\nScraping {siteName}/{username}");
             siteNameToFunc[siteName]();
         }
         catch (KeyNotFoundException _)
@@ -27,11 +27,13 @@ public static class Program
     {
         Config.LoadConfig();
         new Thread(o => new Server()).Start();
+        using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "data", "rss_urls.txt"));
 
         foreach (var item in Config.SitesAndUsernames)
         {
             foreach (var value in item.Value)
             {
+                writer.WriteLine($"{Config.Url}/{item.Key}/{value}/rss.xml");
                 ScrapeByName(item.Key, value);
             }
         }

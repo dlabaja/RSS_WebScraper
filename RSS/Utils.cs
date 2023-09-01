@@ -14,13 +14,13 @@ namespace RSS;
 
 public class Utils
 {
-    public static HtmlDocument GetHTMLDocument(string url)
+    public static HtmlDocument GetHTMLDocument(string url, string cookieFilePath = "")
     {
         // create new curl-impersonate process
         var process = new Process{
             StartInfo = new ProcessStartInfo{
                 FileName = "/bin/bash",
-                Arguments = $"{Config.CurlImpersonateScriptLocation} {url}",
+                Arguments = $"{Config.CurlImpersonateScriptLocation} \"{url}\" {(!string.IsNullOrEmpty(cookieFilePath) ? $"-b \"{cookieFilePath}\"" : "")}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,

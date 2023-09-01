@@ -6,11 +6,12 @@ public static class Config
 {
     public static string Url { get; private set; }
     public static string CurlImpersonateScriptLocation { get; private set; }
+    public static string FFmpegLocation { get; private set; }
     public static Dictionary<string, List<string>> SitesAndUsernames { get; private set; }
 
     public static void LoadConfig()
     {
-        string jsonText = File.ReadAllText($"{Directory.GetCurrentDirectory()}/config.json");
+        string jsonText = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "data", "config.json"));
 
         using JsonDocument document = JsonDocument.Parse(jsonText);
         JsonElement root = document.RootElement;
@@ -24,7 +25,8 @@ public static class Config
             }
             CurlImpersonateScriptLocation = root.GetProperty("CurlImpersonateScriptLocation").GetString()
                                             ?? throw new Exception("Invalid CurlImpersonateScriptLocation");
-
+            FFmpegLocation = root.GetProperty("FFmpegLocation").GetString()
+                                            ?? throw new Exception("Invalid FFmpegLocation");
             SitesAndUsernames = new Dictionary<string, List<string>>() ?? throw new Exception("Invalid SitesAndUsernames");
             var sitesAndUsernamesElement = root.GetProperty("SitesAndUsernames");
             foreach (var siteElement in sitesAndUsernamesElement.EnumerateObject())
