@@ -80,17 +80,6 @@ public class Media
                     catch {}
                 }
             }
-
-            // check if files have correct format and are not a HTML page
-            foreach (var file in Directory.GetFiles(mediaFolder))
-            {
-                try
-                {
-                    if (File.ReadAllText(file).Contains("<!DOCTYPE html>"))
-                        File.Delete(file);
-                }
-                catch {}
-            }
         }).Start();
     }
 

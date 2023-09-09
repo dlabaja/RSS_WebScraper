@@ -8,19 +8,23 @@ public static class Program
     private static void ScrapeByName(string siteName, string username)
     {
         var siteNameToFunc = new Dictionary<string, Action>{
-            {"picuki", () => new Picuki(username).Scrape()},
+            {
+                "picuki", () =>
+                {
+                    new Picuki(username).Scrape();
+                    if (!Config.SitesAndUsernames["picuki_stories_blacklist"].Contains(username))
+                    {
+                        new PicukiStories(username).Scrape();
+                    }
+                }
+            },
             {"nitter", () => new Nitter(username).Scrape()}
         };
 
-        try
-        {
-            Console.WriteLine($"----\nScraping {siteName}/{username}");
-            siteNameToFunc[siteName]();
-        }
-        catch (KeyNotFoundException _)
-        {
-            throw new Exception($"Invalid site name ({siteName})");
-        }
+        if (!siteNameToFunc.ContainsKey(siteName)) return;
+
+        Console.WriteLine($"----\nScraping {siteName}/{username}");
+        siteNameToFunc[siteName]();
     }
 
     private static void Main()

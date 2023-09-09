@@ -8,7 +8,7 @@ public class Picuki : Website
     public void Scrape()
     {
         var media = new Media(siteName, username);
-        var doc = Utils.GetHTMLDocument($"{link}/{username}").DocumentNode;
+        var doc = GetHTMLDocument($"{link}/{username}").DocumentNode;
 
         var rss = new RSS{
             Channel = new Channel{
@@ -21,14 +21,14 @@ public class Picuki : Website
 
         rss.Channel.Image = new Image{
             Url = new DescriptionBuilder(media)
-                .AddImage(doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), relativeImgFolder, "favicon").ToString(),
+                .AddImage("favicon", doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), relativeImgFolder).ToString(),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
 
         if (File.Exists(Path.Combine(usernameFolder, "rss.xml")))
         {
-            rss = Utils.DeserializeXML(Path.Combine(usernameFolder, "rss.xml"));
+            rss = DeserializeXML(Path.Combine(usernameFolder, "rss.xml"));
         }
 
         var count = doc.SelectNodes("//div[@class='photo']/a").Count;
@@ -41,7 +41,7 @@ public class Picuki : Website
                 continue;
             }
 
-            var post = Utils.GetHTMLDocument(postUrl).DocumentNode;
+            var post = GetHTMLDocument(postUrl).DocumentNode;
 
             Console.WriteLine($"Scraping post {i + 1}/{count}");
 
@@ -66,7 +66,7 @@ public class Picuki : Website
             rss.Channel.Items.Add(item);
         }
 
-        Utils.SerializeXML<RSS>(usernameFolder, rss);
+        SerializeXML<RSS>(usernameFolder, rss);
         media.DownloadAllMedia();
     }
 

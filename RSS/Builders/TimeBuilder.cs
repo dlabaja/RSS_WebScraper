@@ -5,9 +5,14 @@ namespace RSS.Builders;
 
 public static class TimeBuilder
 {
-    public static string ParsePicukiTime(string time)
+    public static string? ParsePicukiTime(string time)
     {
         var regex = Regex.Match(time, @"(\d+)\s+(minute|hour|day|week|month)s?\s+ago");
+        if (!regex.Success)
+        {
+            return null;
+        }
+
         var baseCount = int.Parse(regex.Groups[1].ToString());
         var modifiers = new Dictionary<string, int>{
             {"minute", 1},
@@ -18,9 +23,12 @@ public static class TimeBuilder
         };
         var modifier = modifiers[regex.Groups[2].ToString().Replace("s", "")];
         var minutesToRemove = baseCount * modifier;
-        var dateTime = DateTime.Now - TimeSpan.FromMinutes(minutesToRemove);
-        
-        // Thu, 27 Apr 2006
+
+        return DateTimeToPubDateFormat(DateTime.Now - TimeSpan.FromMinutes(minutesToRemove));
+    }
+
+    public static string? DateTimeToPubDateFormat(DateTime dateTime)
+    {
         return dateTime.ToString("ddd, dd MMM yyyy HH:mm:ss K", CultureInfo.InvariantCulture);
     }
 

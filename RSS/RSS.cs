@@ -57,5 +57,5 @@ public class Item
     public string GUID { get; set; }
 
     [XmlElement("pubDate")]
-    public string PubDate { get; set; }
+    public string? PubDate { get; set; }
 }

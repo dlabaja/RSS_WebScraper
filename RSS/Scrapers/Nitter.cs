@@ -12,7 +12,7 @@ public class Nitter : Website
     public void Scrape()
     {
         var media = new Media(siteName, username);
-        var doc = Utils.GetHTMLDocument($"{link}/{username}/with_replies").DocumentNode;
+        var doc = GetHTMLDocument($"{link}/{username}/with_replies").DocumentNode;
 
         var rss = new RSS{
             Channel = new Channel{
@@ -26,14 +26,14 @@ public class Nitter : Website
 
         rss.Channel.Image = new Image{
             Url = new DescriptionBuilder(media)
-                .AddImage($"{link}{doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", "")}", relativeImgFolder, "favicon").ToString(),
+                .AddImage("favicon", $"{link}{doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", "")}", relativeImgFolder).ToString(),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
 
         if (File.Exists($"{usernameFolder}/rss.xml"))
         {
-            rss = Utils.DeserializeXML($"{usernameFolder}/rss.xml");
+            rss = DeserializeXML($"{usernameFolder}/rss.xml");
         }
 
         var count = doc.SelectNodes("//div[@class='timeline-item ']").Count;
@@ -47,7 +47,7 @@ public class Nitter : Website
                 continue;
             }
 
-            var post = Utils.GetHTMLDocument(postUrl, $"{Path.Combine(Directory.GetCurrentDirectory(), "data", "cookies", "nitter.txt")}").DocumentNode;
+            var post = GetHTMLDocument(postUrl, $"{Path.Combine(Directory.GetCurrentDirectory(), "data", "cookies", "nitter.txt")}").DocumentNode;
 
             Console.WriteLine($"Scraping post {i + 1}/{count}");
 
@@ -63,7 +63,7 @@ public class Nitter : Website
             rss.Channel.Items.Add(item);
         }
 
-        Utils.SerializeXML<RSS>(usernameFolder, rss);
+        SerializeXML<RSS>(usernameFolder, rss);
         media.DownloadAllMedia();
     }
 

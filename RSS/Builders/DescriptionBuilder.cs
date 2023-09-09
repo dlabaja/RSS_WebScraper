@@ -88,6 +88,14 @@ public class DescriptionBuilder
         return this;
     }
 
+    public DescriptionBuilder AddVideo(string id, string url, string relativeMediaFolder)
+    {
+        media.Add(id, url);
+        Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}'></video><br>");
+
+        return this;
+    }
+
     public DescriptionBuilder AddComments((List<string> usernames, List<string> messages) comments)
     {
         try
