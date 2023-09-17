@@ -2,6 +2,7 @@ using HtmlAgilityPack;
 using RSS.Builders;
 using System.Text.RegularExpressions;
 using System.Web;
+using Notify;
 
 namespace RSS.Scrapers;
 
@@ -12,21 +13,30 @@ public class Nitter : Website
         var media = new Media(siteName, username);
         var doc = GetHTMLDocument(link).DocumentNode;
 
-        var rss = new RSS{
-            Channel = new Channel{
-                Title = doc.SelectSingleNode("//a[@class='profile-card-fullname']").InnerText,
-                Link = link,
-                Items = new List<Item>(),
-                Description = new DescriptionBuilder(media)
-                    .AddSpan(doc.SelectSingleNode("//div[@class='profile-bio']/p")?.InnerText.Trim() ?? string.Empty).ToString(),
-            }
-        };
-
+        RSS rss;
+        try
+        {
+            rss = new RSS{
+                Channel = new Channel{
+                    Title = doc.SelectSingleNode("//a[@class='profile-card-fullname']").InnerText,
+                    Link = link,
+                    Items = new List<Item>(),
+                    Description = new DescriptionBuilder(media)
+                        .AddSpan(doc.SelectSingleNode("//div[@class='profile-bio']/p")?.InnerText.Trim() ?? string.Empty).ToString(),
+                }
+            };
+        }
+        catch
+        {
+            throw new RSSException($"Nitter instance {Config.NitterInstance} probably down or broken");
+        }
+        
         rss.Channel.Image = new Image{
             Url = AddFavicon(media, Config.NitterInstance + doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", "")),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
+
 
         if (File.Exists($"{usernameFolder}/rss.xml"))
         {
@@ -75,7 +85,7 @@ public class Nitter : Website
         };
 
         var separators = new List<int>();
-        
+
         foreach (var selectedNodes in xpathExpressions.Select(xpathExpression => post.SelectNodes(xpathExpression) ?? Enumerable.Empty<HtmlNode>()))
         {
             foreach (var item in selectedNodes)
@@ -85,13 +95,14 @@ public class Nitter : Website
                 nodes.Add(html.DocumentNode);
             }
         }
+
         separators.Add((post.SelectNodes("//div[@class='before-tweet thread-line']/div")?.Count ?? 0) + 1);
 
         foreach (var threads in post.SelectNodes("//div[@class='reply thread thread-line']") ?? Enumerable.Empty<HtmlNode>())
         {
             var t = new HtmlDocument();
             t.LoadHtml(threads.InnerHtml);
-    
+
             foreach (var item in t.DocumentNode.SelectNodes("//div[contains(@class, 'timeline-item')]") ?? Enumerable.Empty<HtmlNode>())
             {
                 var html = new HtmlDocument();
@@ -122,8 +133,8 @@ public class Nitter : Website
                     .AddParagraph(item.SelectSingleNode("//div[@class='tweet-content media-body']").InnerText)
                     .AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => Config.NitterInstance + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeImgFolder)
                     .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
-                                              .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
-                                          ?? Enumerable.Empty<string>(),
+                                   .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
+                               ?? Enumerable.Empty<string>(),
                         relativeImgFolder)
                     .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
                                    .Select(x => Config.NitterInstance + x.GetAttributeValue("src", ""))!

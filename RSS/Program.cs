@@ -1,5 +1,8 @@
-﻿using RSS.Scrapers;
+﻿using Notify;
+using RSS.Scrapers;
+using System.Timers;
 using StreamWriter = System.IO.StreamWriter;
+using Timer = System.Timers.Timer;
 
 namespace RSS;
 
@@ -30,8 +33,18 @@ public static class Program
     {
         Config.LoadConfig();
         new Thread(_ => new Server()).Start();
-        using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "data", "rss_urls.txt"));
 
+        Rescrape();
+        var timer = new Timer();
+        timer.Interval = 1000 * 60 * Config.ScrapeTimer;
+        timer.Elapsed += delegate { Rescrape(); };
+        timer.AutoReset = true;
+        timer.Start();
+    }
+
+    private static void Rescrape()
+    {
+        using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "data", "rss_urls.txt"));
         foreach (var item in Config.SitesAndUsernames)
         {
             new Thread(_ =>
@@ -41,7 +54,7 @@ public static class Program
                     ScrapeByName(item.Key, value);
                 }
             }).Start();
-            
+
             foreach (var value in item.Value)
             {
                 writer.WriteLine($"{Config.Url}/{item.Key}/{value}/rss.xml");

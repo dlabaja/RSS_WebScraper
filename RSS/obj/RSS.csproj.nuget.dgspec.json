@@ -41,6 +41,10 @@
             "HtmlAgilityPack": {
               "target": "Package",
               "version": "[1.11.51, )"
+            },
+            "libnotify.net": {
+              "target": "Package",
+              "version": "[0.0.4, )"
             }
           },
           "imports": [

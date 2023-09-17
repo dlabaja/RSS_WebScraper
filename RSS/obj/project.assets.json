@@ -14,6 +14,15 @@
             "related": ".deps.json;.pdb;.xml"
           }
         }
+      },
+      "libnotify.net/0.0.4": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/libnotify.net.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/libnotify.net.dll": {}
+        }
       }
     }
   },
@@ -65,11 +74,24 @@
         "lib/uap10.0/HtmlAgilityPack.pdb",
         "lib/uap10.0/HtmlAgilityPack.pri"
       ]
+    },
+    "libnotify.net/0.0.4": {
+      "sha512": "QOF9GU1aPBUxRFnZXOSmiIl7/W6b9yftmHjOzRTcxTN73627DWF98+53hJdSM46hH2vrmk9uMfC+XQOQKsLUnw==",
+      "type": "package",
+      "path": "libnotify.net/0.0.4",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/netstandard2.0/libnotify.net.dll",
+        "libnotify.net.0.0.4.nupkg.sha512",
+        "libnotify.net.nuspec"
+      ]
     }
   },
   "projectFileDependencyGroups": {
     "net7.0": [
-      "HtmlAgilityPack >= 1.11.51"
+      "HtmlAgilityPack >= 1.11.51",
+      "libnotify.net >= 0.0.4"
     ]
   },
   "packageFolders": {
@@ -112,6 +134,10 @@
           "HtmlAgilityPack": {
             "target": "Package",
             "version": "[1.11.51, )"
+          },
+          "libnotify.net": {
+            "target": "Package",
+            "version": "[0.0.4, )"
           }
         },
         "imports": [
