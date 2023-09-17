@@ -7,6 +7,7 @@ public static class Config
     public static string Url { get; private set; }
     public static string CurlImpersonateScriptLocation { get; private set; }
     public static string FFmpegLocation { get; private set; }
+    public static string NitterInstance { get; private set; }
     public static Dictionary<string, List<string>> SitesAndUsernames { get; private set; }
 
     public static void LoadConfig()
@@ -18,17 +19,18 @@ public static class Config
 
         try
         {
-            Url = root.GetProperty("Url").GetString() ?? throw new Exception("Invalid URL");
+            Url = root.GetProperty("url").GetString() ?? throw new Exception("Invalid URL");
             if (Url.EndsWith("/"))
             {
                 Url.Remove(Url.Length - 1);
             }
-            CurlImpersonateScriptLocation = root.GetProperty("CurlImpersonateScriptLocation").GetString()
-                                            ?? throw new Exception("Invalid CurlImpersonateScriptLocation");
-            FFmpegLocation = root.GetProperty("FFmpegLocation").GetString()
-                                            ?? throw new Exception("Invalid FFmpegLocation");
-            SitesAndUsernames = new Dictionary<string, List<string>>() ?? throw new Exception("Invalid SitesAndUsernames");
-            var sitesAndUsernamesElement = root.GetProperty("SitesAndUsernames");
+
+            CurlImpersonateScriptLocation = root.GetProperty("curl_impersonate_script_location").GetString()
+                                            ?? throw new Exception("Invalid curl_impersonate_script_location");
+            FFmpegLocation = root.GetProperty("ffmpeg_location").GetString() ?? throw new Exception("Invalid ffmpeg_location");
+            NitterInstance = (root.GetProperty("nitter_instance").GetString()!.EndsWith("/") ? root.GetProperty("nitter_instance").GetString()?[..^1] : root.GetProperty("nitter_instance").GetString()) ?? throw new Exception("Invalid nitter_instance");
+            SitesAndUsernames = new Dictionary<string, List<string>>() ?? throw new Exception("Invalid sites_and_usernames");
+            var sitesAndUsernamesElement = root.GetProperty("sites_and_usernames");
             foreach (var siteElement in sitesAndUsernamesElement.EnumerateObject())
             {
                 var siteName = siteElement.Name;

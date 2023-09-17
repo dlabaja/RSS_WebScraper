@@ -8,20 +8,20 @@ public class Picuki : Website
     public void Scrape()
     {
         var media = new Media(siteName, username);
-        var doc = GetHTMLDocument($"{link}/{username}").DocumentNode;
+        var doc = GetHTMLDocument(link).DocumentNode;
 
+        if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
         var rss = new RSS{
             Channel = new Channel{
                 Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
-                Link = $"{link}/{username}",
+                Link = link,
                 Items = new List<Item>(),
                 Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
             }
         };
 
         rss.Channel.Image = new Image{
-            Url = new DescriptionBuilder(media)
-                .AddImage("favicon", doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), relativeImgFolder).ToString(),
+            Url = AddFavicon(media, doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", "")),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
@@ -31,39 +31,45 @@ public class Picuki : Website
             rss = DeserializeXML(Path.Combine(usernameFolder, "rss.xml"));
         }
 
-        var count = doc.SelectNodes("//div[@class='photo']/a").Count;
+        var count = doc.SelectNodes("//div[@class='photo']/a")?.Count;
+        if (count == null) return;
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='photo']/a").Select(x => x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"\/media\/(\d+)").Groups[1].ToString();
             if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
-                Console.WriteLine($"Post {i + 1}/{count} already scraped");
+                Console.WriteLine($"{siteName}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
             }
 
             var post = GetHTMLDocument(postUrl).DocumentNode;
 
-            Console.WriteLine($"Scraping post {i + 1}/{count}");
+            Console.WriteLine($"{siteName}/{username}: Scraping post {i + 1}/{count}");
 
-            var item = new Item{
-                Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim(),
-                Link = rss.Channel.Link,
-                Author = username,
-                PubDate = TimeBuilder.ParsePicukiTime(post.SelectSingleNode("//div[@class='single-photo-time']").InnerText),
-                GUID = id,
-                Description = new DescriptionBuilder(media)
-                    .AddSpanOrEmpty($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim()}",
-                        !string.IsNullOrEmpty(post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim())) // location
-                    .AddSpan($"💬 {post.SelectSingleNode("//span[@id='commentsCount']").InnerText}") // commentsCount;
-                    .AddSpan($"❤️ {post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText.Replace("likes", "")}  ") // likes
-                    .AddImages(id, post.SelectNodes("//div[@class='item']/img | //div[@class='single-photo']/img")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
-                        relativeImgFolder)
-                    .AddVideos(id, post.SelectNodes("//div[@class='item']/video/source | //div[@class='single-photo']/video")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
-                        relativeImgFolder)
-                    .AddComments(ScrapeComments(post)).ToString()
-            };
-
-            rss.Channel.Items.Add(item);
+            try
+            {
+                var item = new Item{
+                    Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim(),
+                    Link = rss.Channel.Link,
+                    Author = username,
+                    PubDate = TimeBuilder.ParsePicukiTime(post.SelectSingleNode("//div[@class='single-photo-time']").InnerText),
+                    GUID = id,
+                    Description = new DescriptionBuilder(media)
+                        .AddSpanOrEmpty($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim()}",
+                            !string.IsNullOrEmpty(post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim())) // location
+                        .AddSpan($"💬 {post.SelectSingleNode("//span[@id='commentsCount']").InnerText}") // commentsCount;
+                        .AddSpan($"❤️ {post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText.Replace("likes", "")}  ") // likes
+                        .AddImages(id,
+                            post.SelectNodes("//div[@class='item']/img | //div[@class='single-photo']/img")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
+                            relativeImgFolder)
+                        .AddVideos(id,
+                            post.SelectNodes("//div[@class='item']/video/source | //div[@class='single-photo']/video")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
+                            relativeImgFolder)
+                        .AddComments(ScrapeComments(post)).ToString()
+                };
+                rss.Channel.Items.Add(item);
+            }
+            catch {}
         }
 
         SerializeXML<RSS>(usernameFolder, rss);
@@ -91,7 +97,7 @@ public class Picuki : Website
     public Picuki(string username)
     {
         this.username = username;
-        link = "https://www.picuki.com/profile";
+        link = $"https://www.picuki.com/profile/{username}";
         siteName = "picuki";
 
         LoadSiteData();

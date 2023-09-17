@@ -7,14 +7,14 @@ namespace RSS;
 public class Media
 {
     private string path;
-    private readonly Dictionary<string, List<string>> mediaDict = new Dictionary<string, List<string>>();
+    private readonly Dictionary<string, string> mediaDict = new Dictionary<string, string>();
 
     public Media(string siteName, string username)
     {
         path = Path.Combine(Directory.GetCurrentDirectory(), siteName, username, "media.json");
         if (File.Exists(path))
         {
-            mediaDict = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(path)) ?? new Dictionary<string, List<string>>();
+            mediaDict = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new Dictionary<string, string>();
         }
     }
 
@@ -32,27 +32,10 @@ public class Media
     {
         if (mediaDict.ContainsKey(id))
         {
-            mediaDict[id].Add(url);
             return;
         }
 
-        mediaDict.Add(id, new List<string>{url});
-    }
-
-    public string GetUniqueName(string id, string url)
-    {
-        return mediaDict.ContainsKey(id) ? $"{id}_{mediaDict[id].IndexOf(url)}" : id;
-    }
-
-    public void Add(string id, List<string> urls)
-    {
-        if (mediaDict.ContainsKey(id))
-        {
-            mediaDict[id].AddRange(urls);
-            return;
-        }
-
-        mediaDict.Add(id, urls);
+        mediaDict.Add(id, url);
     }
 
     public void DownloadAllMedia()
@@ -61,24 +44,20 @@ public class Media
         new Thread(o =>
         {
             var mediaFolder = Path.Combine(Path.GetDirectoryName(path)!, "media");
-            foreach (var key in mediaDict.Keys)
+            foreach (var (id, url) in mediaDict)
             {
-                foreach (var (url, i) in mediaDict[key].WithIndex())
+                try
                 {
-                    try
+                    if (File.Exists(Path.Combine(mediaFolder, id))) continue;
+                    if (url.Contains(".m3u8"))
                     {
-                        var id = $"{key}_{i}";
-                        if (File.Exists(Path.Combine(mediaFolder, id))) continue;
-                        if (url.Contains(".m3u8"))
-                        {
-                            ConvertToMp4(url, mediaFolder, id);
-                            continue;
-                        }
-
-                        DownloadMedia(url, mediaFolder, id);
+                        ConvertToMp4(url, mediaFolder, id);
+                        continue;
                     }
-                    catch {}
+
+                    DownloadMedia(url, mediaFolder, id);
                 }
+                catch {}
             }
         }).Start();
     }

@@ -98,4 +98,10 @@ public class Website
 
         return htmlDocument;
     }
+
+    protected string AddFavicon(Media media, string url)
+    {
+        media.Add("favicon", url);
+        return $"{Config.Url}/{relativeImgFolder}/favicon";
+    }
 }

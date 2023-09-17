@@ -1,9 +1,7 @@
 using HtmlAgilityPack;
 using RSS.Builders;
-using System.Collections;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Xml;
 
 namespace RSS.Scrapers;
 
@@ -12,21 +10,20 @@ public class Nitter : Website
     public void Scrape()
     {
         var media = new Media(siteName, username);
-        var doc = GetHTMLDocument($"{link}/{username}/with_replies").DocumentNode;
+        var doc = GetHTMLDocument(link).DocumentNode;
 
         var rss = new RSS{
             Channel = new Channel{
                 Title = doc.SelectSingleNode("//a[@class='profile-card-fullname']").InnerText,
-                Link = $"{link}/{username}/with_replies",
+                Link = link,
                 Items = new List<Item>(),
                 Description = new DescriptionBuilder(media)
-                    .AddParagraph(doc.SelectSingleNode("//div[@class='profile-bio']/p").InnerText.Trim()).ToString(),
+                    .AddSpan(doc.SelectSingleNode("//div[@class='profile-bio']/p")?.InnerText.Trim() ?? string.Empty).ToString(),
             }
         };
 
         rss.Channel.Image = new Image{
-            Url = new DescriptionBuilder(media)
-                .AddImage("favicon", $"{link}{doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", "")}", relativeImgFolder).ToString(),
+            Url = AddFavicon(media, Config.NitterInstance + doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", "")),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
@@ -38,18 +35,18 @@ public class Nitter : Website
 
         var count = doc.SelectNodes("//div[@class='timeline-item ']").Count;
 
-        foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => "https://nitter.net" + x.GetAttributeValue("href", "")).WithIndex())
+        foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"\d+").Value;
             if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
-                Console.WriteLine($"Post {i + 1}/{count} already scraped");
+                Console.WriteLine($"{siteName}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
             }
 
             var post = GetHTMLDocument(postUrl, $"{Path.Combine(Directory.GetCurrentDirectory(), "data", "cookies", "nitter.txt")}").DocumentNode;
 
-            Console.WriteLine($"Scraping post {i + 1}/{count}");
+            Console.WriteLine($"{siteName}/{username}: Scraping post {i + 1}/{count}");
 
             var item = new Item{
                 Title = new DescriptionBuilder(media).AddParagraph(doc.SelectNodes("//div[@class='tweet-content media-body']")[i].InnerText).ToString(),
@@ -57,7 +54,7 @@ public class Nitter : Website
                 Author = username,
                 GUID = id,
                 PubDate = TimeBuilder.ParseNitterTime(post.SelectSingleNode("//p[@class='tweet-published']").InnerText),
-                Description = ScrapeThreads(post, id, media)
+                Description = ScrapeThreads(post, media)
             };
 
             rss.Channel.Items.Add(item);
@@ -67,7 +64,7 @@ public class Nitter : Website
         media.DownloadAllMedia();
     }
 
-    private string ScrapeThreads(HtmlNode post, string id, Media media)
+    private string ScrapeThreads(HtmlNode post, Media media)
     {
         var d = new DescriptionBuilder(media);
 
@@ -120,14 +117,18 @@ public class Nitter : Website
                 var view = item.SelectSingleNode("//span[@class='icon-play']/parent::div")?.InnerText.Trim();
 
                 d.AddSpan($"<b>{item.SelectSingleNode("//a[@class='fullname']").InnerText} ({item.SelectSingleNode("//a[@class='username']").InnerText})</b>          {item.SelectSingleNode("//span[@class='tweet-date']/a").InnerText}")
-                    .AddSpanOrEmpty(string.Join(", ", item.SelectNodes("//div[@class='replying-to']")?.Select(x => x.InnerText) ?? Enumerable.Empty<string>()),
+                    .AddSpanOrEmpty("<i>" + string.Join(", ", item.SelectNodes("//div[@class='replying-to']")?.Select(x => x.InnerText) ?? Enumerable.Empty<string>()) + "</i>",
                         item.SelectNodes("//div[@class='replying-to']") != null)
                     .AddParagraph(item.SelectSingleNode("//div[@class='tweet-content media-body']").InnerText)
-                    .AddImages($"{id}_{i}", item.SelectNodes("//a[@class='still-image']/img")?.Select(x => "https://nitter.net" + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeImgFolder)
-                    .AddVideos($"{id}_{i}",item.SelectNodes("//div[@class='attachment video-container']/video")?
+                    .AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => Config.NitterInstance + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeImgFolder)
+                    .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
                                               .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
                                           ?? Enumerable.Empty<string>(),
                         relativeImgFolder)
+                    .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
+                                   .Select(x => Config.NitterInstance + x.GetAttributeValue("src", ""))!
+                               ?? Enumerable.Empty<string>(),
+                        relativeImgFolder) // gifs
                     .AddSpanOrEmpty($"💬 {comment}  ",
                         !string.IsNullOrEmpty(comment),
                         false)
@@ -159,10 +160,10 @@ public class Nitter : Website
         return d.ToString();
     }
 
-    public Nitter(string username)
+    public Nitter(string username, bool allowReplies)
     {
         this.username = username;
-        link = "https://nitter.net";
+        link = allowReplies ? $"{Config.NitterInstance}/{username}/with_replies" : $"{Config.NitterInstance}/{username}";
         siteName = "nitter";
 
         LoadSiteData();

@@ -12,20 +12,20 @@ public class PicukiStories : Website
     public void Scrape()
     {
         var media = new Media(siteName, username);
-        var doc = GetHTMLDocument($"{link}/{username}").DocumentNode;
+        var doc = GetHTMLDocument(link).DocumentNode;
 
+        if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
         var rss = new RSS{
             Channel = new Channel{
                 Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
-                Link = $"{link}/{username}",
+                Link = link,
                 Items = new List<Item>(),
                 Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
             }
         };
 
         rss.Channel.Image = new Image{
-            Url = new DescriptionBuilder(media)
-                .AddImage("favicon", doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", ""), relativeImgFolder).ToString(),
+            Url = AddFavicon(media, doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", "")),
             Title = rss.Channel.Title,
             Link = rss.Channel.Link
         };
@@ -50,11 +50,11 @@ public class PicukiStories : Website
             
             if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
-                Console.WriteLine($"Story {i + 1} ({time}) already scraped");
+                Console.WriteLine($"{siteName}/{username}: Story {i + 1} ({time}) already scraped");
                 continue;
             }
 
-            Console.WriteLine($"Scraping story {i + 1} ({time})");
+            Console.WriteLine($"{siteName}/{username}: Scraping story {i + 1} ({time})");
 
             var item = new Item{
                 Title = $"Story ({DateTime.Parse(TimeBuilder.ParsePicukiTime(time)!):dd MMM yyyy HH:mm:ss})",
@@ -126,7 +126,7 @@ public class PicukiStories : Website
     public PicukiStories(string username)
     {
         this.username = username;
-        link = "https://www.picuki.com/profile";
+        link = $"https://www.picuki.com/profile/{username}";
         siteName = "picuki";
 
         LoadSiteData();

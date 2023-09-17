@@ -17,28 +17,34 @@ public static class Program
                         new PicukiStories(username).Scrape();
                     }
                 }
-            },
-            {"nitter", () => new Nitter(username).Scrape()}
+            },{
+                "nitter", () => new Nitter(username, !Config.SitesAndUsernames["nitter_replies_blacklist"].Contains(username)).Scrape()
+            }
         };
 
         if (!siteNameToFunc.ContainsKey(siteName)) return;
-
-        Console.WriteLine($"----\nScraping {siteName}/{username}");
         siteNameToFunc[siteName]();
     }
 
     private static void Main()
     {
         Config.LoadConfig();
-        new Thread(o => new Server()).Start();
+        new Thread(_ => new Server()).Start();
         using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "data", "rss_urls.txt"));
 
         foreach (var item in Config.SitesAndUsernames)
         {
+            new Thread(_ =>
+            {
+                foreach (var value in item.Value)
+                {
+                    ScrapeByName(item.Key, value);
+                }
+            }).Start();
+            
             foreach (var value in item.Value)
             {
                 writer.WriteLine($"{Config.Url}/{item.Key}/{value}/rss.xml");
-                ScrapeByName(item.Key, value);
             }
         }
     }

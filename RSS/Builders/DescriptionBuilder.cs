@@ -61,17 +61,42 @@ public class DescriptionBuilder
     public DescriptionBuilder AddImage(string id, string url, string relativeMediaFolder)
     {
         media.Add(id, url);
-        Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}\"><br>");
+        Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{id}\"><br>");
 
         return this;
     }
 
-    public DescriptionBuilder AddImages(string id, IEnumerable<string> urls, string relativeMediaFolder)
+    public DescriptionBuilder AddImages(IEnumerable<string> urls, string relativeMediaFolder)
     {
         foreach (var url in urls)
         {
+            var id = Regex.Match(url, @"\/media%2F(.*?)\.").Groups[1].Value;
             media.Add(id, url);
-            Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}\"><br>");
+            Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{id}\"><br>");
+        }
+
+        return this;
+    }
+
+    public DescriptionBuilder AddVideos(IEnumerable<string> urls, string relativeMediaFolder)
+    {
+        foreach (var url in urls)
+        {
+            var id = Regex.Match(url, @"[%\/]([A-Za-z0-9\-_]+)\.m").Groups[1].Value;
+            media.Add(id, url);
+            Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{id}'></video><br>");
+        }
+
+        return this;
+    }
+    
+    public DescriptionBuilder AddImages(string id, IEnumerable<string> urls, string relativeMediaFolder)
+    {
+        foreach (var (url, i) in urls.WithIndex())
+        {
+            id = $"{id}_{i}"; 
+            media.Add(id, url);
+            Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{id}\"><br>");
         }
 
         return this;
@@ -79,10 +104,11 @@ public class DescriptionBuilder
 
     public DescriptionBuilder AddVideos(string id, IEnumerable<string> urls, string relativeMediaFolder)
     {
-        foreach (var url in urls)
+        foreach (var (url, i) in urls.WithIndex())
         {
+            id = $"{id}_{i}"; 
             media.Add(id, url);
-            Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}'></video><br>");
+            Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{id}'></video><br>");
         }
 
         return this;
@@ -91,7 +117,7 @@ public class DescriptionBuilder
     public DescriptionBuilder AddVideo(string id, string url, string relativeMediaFolder)
     {
         media.Add(id, url);
-        Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{media.GetUniqueName(id, url)}'></video><br>");
+        Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{id}'></video><br>");
 
         return this;
     }
