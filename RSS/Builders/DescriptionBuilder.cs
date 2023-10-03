@@ -1,3 +1,4 @@
+using HtmlAgilityPack;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -6,8 +7,8 @@ namespace RSS.Builders;
 
 public class DescriptionBuilder
 {
-    private StringBuilder Description = new StringBuilder();
-    private Media media;
+    protected StringBuilder Description = new StringBuilder();
+    protected Media media;
 
     public DescriptionBuilder(Media media)
     {
@@ -70,7 +71,7 @@ public class DescriptionBuilder
     {
         foreach (var url in urls)
         {
-            var id = Regex.Match(url, @"\/media%2F(.*?)\.").Groups[1].Value;
+            var id = Regex.IsMatch(url, @"\/media%2F(.*?)\.") ? Regex.Match(url, @"\/media%2F(.*?)\.").Groups[1].Value : url[^40..];
             media.Add(id, url);
             Description.Append($"<img src=\"{Config.Url}/{relativeMediaFolder}/{id}\"><br>");
         }
@@ -82,7 +83,7 @@ public class DescriptionBuilder
     {
         foreach (var url in urls)
         {
-            var id = Regex.Match(url, @"[%\/]([A-Za-z0-9\-_]+)\.m").Groups[1].Value;
+            var id = Regex.IsMatch(url, @"[%\/]([A-Za-z0-9\-_]+)\.m") ? Regex.Match(url, @"[%\/]([A-Za-z0-9\-_]+)\.m").Groups[1].Value : url[^40..];
             media.Add(id, url);
             Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{id}'></video><br>");
         }
@@ -136,7 +137,32 @@ public class DescriptionBuilder
         return this;
     }
 
+    public DescriptionBuilder AddQuoteTweet(string? quoteHtml, string relativeMediaFolder)
+    {
+        if (quoteHtml == null)
+            return this;
 
+        var d = new HtmlDocument();
+        d.LoadHtml(quoteHtml);
+        var doc = d.DocumentNode;
+        
+        Description.Append("\n<i>");
+        Description.Append($"{doc.SelectSingleNode("//a[@class='fullname']").InnerText} | {TimeBuilder.ParseNitterTime(doc.SelectSingleNode("//span[@class='tweet-date']/a").GetAttributeValue("title", ""))}\n");
+        Description.Append(doc.SelectSingleNode("//div[@class='quote-text']").InnerText + "\n");
+        if (doc.SelectSingleNode("//a[@class='still-image']/img") != null)
+        {
+            var url = doc.SelectSingleNode("//a[@class='still-image']/img").GetAttributeValue("src", "");
+            AddImage(url[^20..], Config.NitterInstance + url, relativeMediaFolder);
+        }
+        else if (doc.SelectSingleNode("//div[@class='attachment video-container']/video") != null)
+        {
+            var url = doc.SelectSingleNode("//div[@class='attachment video-container']/video").GetAttributeValue("data-url", "");
+            AddVideo(url[^20..], Config.NitterInstance + url, relativeMediaFolder);
+        }
+        Description.Append("</i>\n");
+        return this;
+    }
+    
     private static string RemoveTags(string input) => Regex.Replace(input, @"<[^>]*>", "");
 
     public override string ToString()

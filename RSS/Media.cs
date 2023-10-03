@@ -9,16 +9,23 @@ public class Media
     private string path;
     private readonly Dictionary<string, string> mediaDict = new Dictionary<string, string>();
 
-    public Media(string siteName, string username)
+    public Media(string siteName)
     {
-        path = Path.Combine(Directory.GetCurrentDirectory(), siteName, username, "media.json");
+        path = Path.Combine(Directory.GetCurrentDirectory(), siteName, "media.json");
         if (File.Exists(path))
         {
-            mediaDict = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new Dictionary<string, string>();
+            try
+            {
+                mediaDict = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new Dictionary<string, string>();
+            }
+            catch (JsonException)
+            {
+                File.Delete(path);
+            }
         }
     }
 
-    private void SaveJson()
+    public void SaveJson()
     {
         var jsonString = JsonSerializer.Serialize(mediaDict,
             new JsonSerializerOptions{

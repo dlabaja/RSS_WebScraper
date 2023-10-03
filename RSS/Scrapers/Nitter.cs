@@ -2,79 +2,90 @@ using HtmlAgilityPack;
 using RSS.Builders;
 using System.Text.RegularExpressions;
 using System.Web;
-using Notify;
+using static RSS.Scrapers.Website;
 
 namespace RSS.Scrapers;
 
-public class Nitter : Website
+public static class Nitter
 {
-    public void Scrape()
-    {
-        var media = new Media(siteName, username);
-        var doc = GetHTMLDocument(link).DocumentNode;
+    public static Media Media { get; }
+    public static RSS Rss { get; }
+    public static string SiteFolder { get; }
+    static string relativeMediaFolder;
+    static string sitename;
 
-        RSS rss;
+    private static RSS GetRSS()
+    {
+        if (File.Exists(Path.Combine(SiteFolder, "rss.xml")))
+            return DeserializeXML(sitename);
+
+        return new RSS{
+            Channel = new Channel{
+                Title = "Nitter",
+                Link = Config.NitterInstance,
+                Items = new List<Item>(),
+                Description = "All tweets in one place",
+                Image = new Image{
+                    Url = AddFavicon(Media, $"{Config.NitterInstance}/logo.png?v=1", relativeMediaFolder),
+                    Title = "Nitter",
+                    Link = Config.NitterInstance
+                }
+            }
+        };
+    }
+
+    public static void Scrape(string username, bool allowReplies)
+    {
+        var doc = GetHTMLDocument(allowReplies ? $"{Config.NitterInstance}/{username}/with_replies" : $"{Config.NitterInstance}/{username}").DocumentNode;
+        if (doc.InnerHtml.Contains("<title>Redirecting</title>")) return;
+
         try
         {
-            rss = new RSS{
-                Channel = new Channel{
-                    Title = doc.SelectSingleNode("//a[@class='profile-card-fullname']").InnerText,
-                    Link = link,
-                    Items = new List<Item>(),
-                    Description = new DescriptionBuilder(media)
-                        .AddSpan(doc.SelectSingleNode("//div[@class='profile-bio']/p")?.InnerText.Trim() ?? string.Empty).ToString(),
-                }
-            };
+            Media.Add(username, Config.NitterInstance + doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", ""));
         }
-        catch
-        {
-            throw new RSSException($"Nitter instance {Config.NitterInstance} probably down or broken");
-        }
-        
-        rss.Channel.Image = new Image{
-            Url = AddFavicon(media, Config.NitterInstance + doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", "")),
-            Title = rss.Channel.Title,
-            Link = rss.Channel.Link
-        };
-
-
-        if (File.Exists($"{usernameFolder}/rss.xml"))
-        {
-            rss = DeserializeXML($"{usernameFolder}/rss.xml");
-        }
+        catch { return; }
 
         var count = doc.SelectNodes("//div[@class='timeline-item ']").Count;
-
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"\d+").Value;
-            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
-                Console.WriteLine($"{siteName}/{username}: Post {i + 1}/{count} already scraped");
+                Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
             }
 
             var post = GetHTMLDocument(postUrl, $"{Path.Combine(Directory.GetCurrentDirectory(), "data", "cookies", "nitter.txt")}").DocumentNode;
-
-            Console.WriteLine($"{siteName}/{username}: Scraping post {i + 1}/{count}");
+            Console.WriteLine($"{sitename}/{username}: Scraping post {i + 1}/{count}");
+            
+            var title = new DescriptionBuilder(Media)
+                .AddSpanOrEmpty($"[🔁 {post.SelectNodes("//a[@class='fullname']")?[0].InnerText}] ",doc.SelectNodes("//div[@class='timeline-item ']")[i]?.InnerHtml.Contains("class=\"retweet-header\"") ?? false, false)
+                .AddParagraph($"{doc.SelectNodes("//div[@class='tweet-content media-body']")[i].InnerText}").ToString();
 
             var item = new Item{
-                Title = new DescriptionBuilder(media).AddParagraph(doc.SelectNodes("//div[@class='tweet-content media-body']")[i].InnerText).ToString(),
+                Title = title.Length > 31 ? CutString(title, 30) + "..." : title,
                 Link = postUrl,
                 Author = username,
                 GUID = id,
                 PubDate = TimeBuilder.ParseNitterTime(post.SelectSingleNode("//p[@class='tweet-published']").InnerText),
-                Description = ScrapeThreads(post, media)
-            };
-
-            rss.Channel.Items.Add(item);
+                Description = ScrapeThreads(post, Media)};
+            Rss.Channel.Items.Add(item);
         }
-
-        SerializeXML<RSS>(usernameFolder, rss);
-        media.DownloadAllMedia();
     }
 
-    private string ScrapeThreads(HtmlNode post, Media media)
+    private static string CutString(string str, int lastIndex)
+    {
+        for (int i = lastIndex; i < str.Length; i++)
+        {
+            if (str[i] == ' ')
+            {
+                return str[..i];
+            }
+        }
+        return str;
+    }
+
+    private static string ScrapeThreads(HtmlNode post, Media media)
     {
         var d = new DescriptionBuilder(media);
 
@@ -127,19 +138,20 @@ public class Nitter : Website
                 var like = item.SelectSingleNode("//span[@class='icon-heart']/parent::div").InnerText.Trim();
                 var view = item.SelectSingleNode("//span[@class='icon-play']/parent::div")?.InnerText.Trim();
 
-                d.AddSpan($"<b>{item.SelectSingleNode("//a[@class='fullname']").InnerText} ({item.SelectSingleNode("//a[@class='username']").InnerText})</b>          {item.SelectSingleNode("//span[@class='tweet-date']/a").InnerText}")
+                d.AddSpan($"<b>{item.SelectSingleNode("//a[@class='fullname']").InnerText} ({item.SelectSingleNode("//a[@class='username']").InnerText})</b>          {item.SelectSingleNode("//span[@class='tweet-date']/a").GetAttributeValue("title", "")}")
                     .AddSpanOrEmpty("<i>" + string.Join(", ", item.SelectNodes("//div[@class='replying-to']")?.Select(x => x.InnerText) ?? Enumerable.Empty<string>()) + "</i>",
                         item.SelectNodes("//div[@class='replying-to']") != null)
                     .AddParagraph(item.SelectSingleNode("//div[@class='tweet-content media-body']").InnerText)
-                    .AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => Config.NitterInstance + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeImgFolder)
+                    .AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => Config.NitterInstance + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeMediaFolder)
                     .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
                                    .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
                                ?? Enumerable.Empty<string>(),
-                        relativeImgFolder)
+                        relativeMediaFolder)
                     .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
                                    .Select(x => Config.NitterInstance + x.GetAttributeValue("src", ""))!
                                ?? Enumerable.Empty<string>(),
-                        relativeImgFolder) // gifs
+                        relativeMediaFolder) // gifs
+                    .AddQuoteTweet(item.SelectSingleNode("//div[@class='quote quote-big']")?.InnerText ?? null, relativeMediaFolder)
                     .AddSpanOrEmpty($"💬 {comment}  ",
                         !string.IsNullOrEmpty(comment),
                         false)
@@ -161,6 +173,7 @@ public class Nitter : Website
                 {
                     d.AddParagraph("---------").AddBreak();
                 }
+                
             }
             catch
             {
@@ -171,12 +184,15 @@ public class Nitter : Website
         return d.ToString();
     }
 
-    public Nitter(string username, bool allowReplies)
+    static Nitter()
     {
-        this.username = username;
-        link = allowReplies ? $"{Config.NitterInstance}/{username}/with_replies" : $"{Config.NitterInstance}/{username}";
-        siteName = "nitter";
+        sitename = "nitter";
+        Media = new Media(sitename);
 
-        LoadSiteData();
+        SiteFolder = Path.Combine(Directory.GetCurrentDirectory(), sitename);
+        relativeMediaFolder = Path.Combine(sitename, "media");
+
+        Directory.CreateDirectory(Path.Combine(SiteFolder, "media"));
+        Rss = GetRSS();
     }
 }

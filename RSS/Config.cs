@@ -9,11 +9,11 @@ public static class Config
     public static string FFmpegLocation { get; private set; }
     public static uint ScrapeTimer { get; private set; }
     public static string NitterInstance { get; private set; }
+    public static string ProxiTokInstance { get; private set; }
     public static Dictionary<string, List<string>> SitesAndUsernames { get; private set; }
 
     public static void LoadConfig()
     {
-        Console.WriteLine(Directory.GetCurrentDirectory());
         string jsonText = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "data", "config.json"));
 
         using JsonDocument document = JsonDocument.Parse(jsonText);
@@ -31,6 +31,7 @@ public static class Config
                                             ?? throw new RSSException("Invalid curl_impersonate_script_location");
             FFmpegLocation = root.GetProperty("ffmpeg_location").GetString() ?? throw new RSSException("Invalid ffmpeg_location");
             NitterInstance = (root.GetProperty("nitter_instance").GetString()!.EndsWith("/") ? root.GetProperty("nitter_instance").GetString()?[..^1] : root.GetProperty("nitter_instance").GetString()) ?? throw new RSSException("Invalid nitter_instance");
+            ProxiTokInstance = (root.GetProperty("proxitok_instance").GetString()!.EndsWith("/") ? root.GetProperty("proxitok_instance").GetString()?[..^1] : root.GetProperty("proxitok_instance").GetString()) ?? throw new RSSException("Invalid proxitok_instance");
             try
             {
                 ScrapeTimer = root.GetProperty("scrape_timer").GetUInt32();

@@ -1,79 +1,85 @@
 using RSS.Builders;
 using System.Text.RegularExpressions;
+using static RSS.Scrapers.Website;
 
 namespace RSS.Scrapers;
 
-public class Picuki : Website
+public static class Picuki
 {
-    public void Scrape()
-    {
-        var media = new Media(siteName, username);
-        var doc = GetHTMLDocument(link).DocumentNode;
+    public static Media Media { get; }
+    public static RSS Rss { get; }
+    public static string SiteFolder { get; }
+    static string relativeMediaFolder;
+    static string sitename;
 
-        if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
-        var rss = new RSS{
+    private static RSS GetRSS()
+    {
+        if (File.Exists(Path.Combine(SiteFolder, "rss.xml")))
+            return DeserializeXML(sitename);
+
+        return new RSS{
             Channel = new Channel{
-                Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
-                Link = link,
+                Title = "Picuki",
+                Link = "https://www.picuki.com",
                 Items = new List<Item>(),
-                Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
+                Description = "All photos in one place",
+                Image = new Image{
+                    Url = AddFavicon(Media, "https://www.picuki.com/p.svg", relativeMediaFolder),
+                    Title = "Picuki",
+                    Link = "https://www.picuki.com"
+                }
             }
         };
+    }
 
-        rss.Channel.Image = new Image{
-            Url = AddFavicon(media, doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", "")),
-            Title = rss.Channel.Title,
-            Link = rss.Channel.Link
-        };
+    public static void Scrape(string username)
+    {
+        var doc = GetHTMLDocument($"https://www.picuki.com/profile/{username}").DocumentNode;
+        if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
 
-        if (File.Exists(Path.Combine(usernameFolder, "rss.xml")))
-        {
-            rss = DeserializeXML(Path.Combine(usernameFolder, "rss.xml"));
-        }
+        Media.Add(username, doc.SelectSingleNode("//img[@class='profile-avatar-image']")?.GetAttributeValue("src", "") ?? string.Empty);
 
         var count = doc.SelectNodes("//div[@class='photo']/a")?.Count;
         if (count == null) return;
+
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='photo']/a").Select(x => x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"\/media\/(\d+)").Groups[1].ToString();
-            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
-                Console.WriteLine($"{siteName}/{username}: Post {i + 1}/{count} already scraped");
+                Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
             }
 
             var post = GetHTMLDocument(postUrl).DocumentNode;
 
-            Console.WriteLine($"{siteName}/{username}: Scraping post {i + 1}/{count}");
+            Console.WriteLine($"{sitename}/{username}: Scraping post {i + 1}/{count}");
 
             try
             {
                 var item = new Item{
                     Title = doc.SelectNodes("//div[@class='photo-description']")[i].InnerText.Trim(),
-                    Link = rss.Channel.Link,
+                    Link = postUrl,
                     Author = username,
                     PubDate = TimeBuilder.ParsePicukiTime(post.SelectSingleNode("//div[@class='single-photo-time']").InnerText),
                     GUID = id,
-                    Description = new DescriptionBuilder(media)
+                    Description = new DescriptionBuilder(Media)
                         .AddSpanOrEmpty($"Location: {post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim()}",
                             !string.IsNullOrEmpty(post.SelectSingleNode("//div[@class='location']/text()[normalize-space()]")?.InnerText.Trim())) // location
                         .AddSpan($"💬 {post.SelectSingleNode("//span[@id='commentsCount']").InnerText}") // commentsCount;
                         .AddSpan($"❤️ {post.SelectSingleNode("//span[@class='icon-thumbs-up-alt']").InnerText.Replace("likes", "")}  ") // likes
                         .AddImages(id,
                             post.SelectNodes("//div[@class='item']/img | //div[@class='single-photo']/img")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
-                            relativeImgFolder)
+                            relativeMediaFolder)
                         .AddVideos(id,
                             post.SelectNodes("//div[@class='item']/video/source | //div[@class='single-photo']/video")?.Select(x => x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(),
-                            relativeImgFolder)
+                            relativeMediaFolder)
                         .AddComments(ScrapeComments(post)).ToString()
                 };
-                rss.Channel.Items.Add(item);
+                Rss.Channel.Items.Add(item);
             }
             catch {}
         }
-
-        SerializeXML<RSS>(usernameFolder, rss);
-        media.DownloadAllMedia();
     }
 
     private static (List<string> usernames, List<string> messages) ScrapeComments(HtmlAgilityPack.HtmlNode post)
@@ -94,12 +100,15 @@ public class Picuki : Website
         return new ValueTuple<List<string>, List<string>>(usernames, messages);
     }
 
-    public Picuki(string username)
+    static Picuki()
     {
-        this.username = username;
-        link = $"https://www.picuki.com/profile/{username}";
-        siteName = "picuki";
+        sitename = "picuki";
+        Media = new Media(sitename);
 
-        LoadSiteData();
+        SiteFolder = Path.Combine(Directory.GetCurrentDirectory(), sitename);
+        relativeMediaFolder = Path.Combine(sitename, "media");
+
+        Directory.CreateDirectory(Path.Combine(SiteFolder, "media"));
+        Rss = GetRSS();
     }
 }

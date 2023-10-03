@@ -1,46 +1,50 @@
-using HtmlAgilityPack;
 using RSS.Builders;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static RSS.Scrapers.Website;
 
 namespace RSS.Scrapers;
 
-public class PicukiStories : Website
+public static class PicukiStories
 {
-    public void Scrape()
+    public static Media Media { get; }
+    public static RSS Rss { get; }
+    public static string SiteFolder { get; }
+    static string relativeMediaFolder;
+    static string sitename;
+    
+    private static RSS GetRSS()
     {
-        var media = new Media(siteName, username);
-        var doc = GetHTMLDocument(link).DocumentNode;
+        if (File.Exists(Path.Combine(SiteFolder, "rss.xml")))
+            return DeserializeXML(sitename);
 
-        if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
-        var rss = new RSS{
+        return new RSS{
             Channel = new Channel{
-                Title = doc.SelectSingleNode("//h1[@class='profile-name-top']").InnerText,
-                Link = link,
+                Title = "Picuki stories",
+                Link = "https://www.picuki.com",
                 Items = new List<Item>(),
-                Description = doc.SelectSingleNode("//div[@class='profile-description']").InnerText.Trim(),
+                Description = "All stories in one place",
+                Image = new Image{
+                    Url = AddFavicon(Media, "https://www.picuki.com/p.svg", relativeMediaFolder),
+                    Title = "Picuki stories",
+                    Link = "https://www.picuki.com"
+                }
             }
         };
-
-        rss.Channel.Image = new Image{
-            Url = AddFavicon(media, doc.SelectSingleNode("//img[@class='profile-avatar-image']").GetAttributeValue("src", "")),
-            Title = rss.Channel.Title,
-            Link = rss.Channel.Link
-        };
-
-        if (File.Exists(Path.Combine(usernameFolder, "rss.xml")))
-        {
-            rss = DeserializeXML(Path.Combine(usernameFolder, "rss.xml"));
-        }
+    }
+    
+    public static void Scrape(string username)
+    {
+        var doc = GetHTMLDocument($"https://www.picuki.com/profile/{username}").DocumentNode;
+        if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
 
         var userId = Regex.Match(doc.InnerHtml, @"let\s+query\s*=\s*'(\d+)'").Groups[1].Value;
         var stories = ScrapeStories($"{Config.CurlImpersonateScriptLocation} -X POST https://www.picuki.com/app/controllers/ajax.php -d username={username} -d query={userId} -d type=story");
-        
         foreach (var (story, i) in stories.WithIndex())
         {
-            var id = Convert.ToBase64String(Encoding.UTF8.GetBytes(Regex.Match(story, "data-origin=\"([^\"]*)\"").Groups[1].Value))[^20..];
+            var id = Convert.ToBase64String(Encoding.UTF8.GetBytes(Regex.Match(story, "data-origin=\"([^\"]*)\"").Groups[1].Value)[^50..^20]);
             var time = Regex.Match(story, "stories_count\\\">([^<]*)").Groups[1].Value.Trim();
             
             if (TimeBuilder.ParsePicukiTime(time) == null)
@@ -48,40 +52,37 @@ public class PicukiStories : Website
                 break;
             }
             
-            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
-                Console.WriteLine($"{siteName}/{username}: Story {i + 1} ({time}) already scraped");
+                Console.WriteLine($"{sitename}/{username}: Story {i + 1} ({time}) already scraped");
                 continue;
             }
 
-            Console.WriteLine($"{siteName}/{username}: Scraping story {i + 1} ({time})");
+            Console.WriteLine($"{sitename}/{username}: Scraping story {i + 1} ({time})");
 
             var item = new Item{
-                Title = $"Story ({DateTime.Parse(TimeBuilder.ParsePicukiTime(time)!):dd MMM yyyy HH:mm:ss})",
-                Link = rss.Channel.Link,
+                Title = $"{username} ({DateTime.Parse(TimeBuilder.ParsePicukiTime(time)!):dd MMM yyyy HH:mm:ss})",
+                Link = Rss.Channel.Link + $"/profile/{username}",
                 Author = username,
                 PubDate = TimeBuilder.ParsePicukiTime(time),
                 GUID = id
             };
 
             var url = Regex.Match(story, "href=\"([^\"]*)\"").Groups[1].Value;
-            var d = new DescriptionBuilder(media).AddSpan(" ", false);
+            var d = new DescriptionBuilder(Media).AddSpan(" ", false);
             if (url.EndsWith(".jpeg"))
             {
-                d.AddImage(id, url, relativeImgFolder);
+                d.AddImage(id, url, relativeMediaFolder);
             }
             else
             {
-                d.AddVideo(id, url, relativeImgFolder);
+                d.AddVideo(id, url, relativeMediaFolder);
             }
 
             item.Description = d.ToString();
 
-            rss.Channel.Items.Add(item);
+            Rss.Channel.Items.Add(item);
         }
-
-        SerializeXML<RSS>(usernameFolder, rss);
-        media.DownloadAllMedia();
     }
 
     private static IEnumerable<string> ScrapeStories(string arguments)
@@ -123,12 +124,15 @@ public class PicukiStories : Website
         }
     }
 
-    public PicukiStories(string username)
+    static PicukiStories()
     {
-        this.username = username;
-        link = $"https://www.picuki.com/profile/{username}";
-        siteName = "picuki";
+        sitename = "picuki_stories";
+        Media = new Media(sitename);
 
-        LoadSiteData();
+        SiteFolder = Path.Combine(Directory.GetCurrentDirectory(), sitename);
+        relativeMediaFolder = Path.Combine(sitename, "media");
+
+        Directory.CreateDirectory(Path.Combine(SiteFolder, "media"));
+        Rss = GetRSS();
     }
 }

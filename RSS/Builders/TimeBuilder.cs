@@ -7,11 +7,9 @@ public static class TimeBuilder
 {
     public static string? ParsePicukiTime(string time)
     {
-        var regex = Regex.Match(time, @"(\d+)\s+(minute|hour|day|week|month)s?\s+ago");
+        var regex = Regex.Match(time, @"(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago");
         if (!regex.Success)
-        {
             return null;
-        }
 
         var baseCount = int.Parse(regex.Groups[1].ToString());
         var modifiers = new Dictionary<string, int>{
@@ -19,7 +17,8 @@ public static class TimeBuilder
             {"hour", 60},
             {"day", 60 * 24},
             {"week", 60 * 24 * 7},
-            {"month", 60 * 24 * 7 * 4}
+            {"month", 60 * 24 * 7 * 4},
+            {"year", 60 * 24 * 7 * 4 * 12}
         };
         var modifier = modifiers[regex.Groups[2].ToString().Replace("s", "")];
         var minutesToRemove = baseCount * modifier;
@@ -27,7 +26,7 @@ public static class TimeBuilder
         return DateTimeToPubDateFormat(DateTime.Now - TimeSpan.FromMinutes(minutesToRemove));
     }
 
-    public static string? DateTimeToPubDateFormat(DateTime dateTime)
+    private static string? DateTimeToPubDateFormat(DateTime dateTime)
     {
         return dateTime.ToString("ddd, dd MMM yyyy HH:mm:ss K", CultureInfo.InvariantCulture);
     }

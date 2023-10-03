@@ -10,12 +10,14 @@ public class Server
     {
         listener = new HttpListener();
         listener.Prefixes.Add(Config.Url.EndsWith("/") ? Config.Url : Config.Url + "/");
-        listener.Start();
+        try { listener.Start(); }
+        catch { throw new RSSException("Cannot start the RSS server (probably occupied port)"); }
+
         Console.WriteLine($"Listening for connections on {Config.Url}");
-        
+
         var listenTask = HandleIncomingConnections();
         listenTask.GetAwaiter().GetResult();
-        
+
         listener.Close();
     }
 
@@ -24,10 +26,10 @@ public class Server
         while (true)
         {
             var ctx = await listener.GetContextAsync();
-            
+
             var req = ctx.Request;
             var resp = ctx.Response;
-            
+
             Console.WriteLine(req.Url?.ToString());
 
             try
@@ -39,7 +41,7 @@ public class Server
                     await resp.OutputStream.WriteAsync(data, 0, data.Length);
                 }
             }
-            catch{}
+            catch {}
 
             resp.Close();
         }

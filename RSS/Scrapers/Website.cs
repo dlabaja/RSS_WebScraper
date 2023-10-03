@@ -1,71 +1,86 @@
 using HtmlAgilityPack;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Serialization;
+using System.Xml.XPath;
 
 namespace RSS.Scrapers;
 
-public class Website
+public static class Website
 {
-    private string appFolder;
-    protected string usernameFolder;
-    private string imgFolder;
-    protected string relativeImgFolder;
-
-    protected string siteName;
-    protected string link;
-    protected string username;
-
-    protected void LoadSiteData()
-    {
-        appFolder = Path.Combine(Directory.GetCurrentDirectory(), siteName);
-        usernameFolder = Path.Combine(appFolder, username);
-        imgFolder = Path.Combine(usernameFolder, "media");
-        relativeImgFolder = Path.Combine(siteName, username, "media");;
-
-        Directory.CreateDirectory(imgFolder);
-    }
-
-    protected static void SerializeXML<T>( string usernameFolder, object o)
+    public static void SerializeXML<T>(RSS rss, string siteFolder, string sitename)
     {
         XmlSerializer serializer = new XmlSerializer(typeof(T));
-        var filePath = $"{usernameFolder}/rss.xml";
+        var filePath = Path.Combine(siteFolder, "rss.xml");
 
-        if (!Directory.Exists($"{usernameFolder}"))
+        if (!Directory.Exists(siteFolder))
         {
-            Directory.CreateDirectory($"{usernameFolder}");
+            Directory.CreateDirectory(siteFolder);
         }
 
         using var writer = new StreamWriter(filePath);
-        serializer.Serialize(writer, o);
+        rss.Channel.Items.RemoveAll(x => !Config.SitesAndUsernames[sitename].Contains(x.Author));
+        rss.Channel.Items.Sort((x, y) => DateTime.Parse(x.PubDate).CompareTo(DateTime.Parse(y.PubDate)));
+        serializer.Serialize(writer, rss);
 
         var doc = new XmlDocument();
         doc.Load(filePath);
-        
-        var versionAttribute = doc.CreateAttribute("version");
-        versionAttribute.Value = "2.0";
-        doc.SelectSingleNode("//rss")?.Attributes?.Append(versionAttribute);
-        
-        var permaLinkAttribute = doc.CreateAttribute("isPermaLink");
-        permaLinkAttribute.Value = "false";
-        doc.SelectSingleNode("//item/guid")?.Attributes?.Append(permaLinkAttribute);
-        
+
+        doc.AddAttribute("//rss", "version", "2.0");
+        doc.AddAttribute("//rss", "xmlns:media", "http://search.yahoo.com/mrss/");
+        doc.AddAttribute("//item/guid", "isPermaLink", "false");
+
+        // adding favicons to every item
+        foreach (XmlNode itemNode in doc.SelectNodes("//item")!)
+        {
+            string author = itemNode.SelectSingleNode("author")!.InnerText;
+
+            XmlElement mediaContent = doc.CreateElement("media", "content", "http://search.yahoo.com/mrss/");
+            mediaContent.SetAttribute("url", $"{Config.Url}/{sitename}/media/{author}");
+            mediaContent.SetAttribute("medium", "image");
+
+            XmlElement mediaTitle = doc.CreateElement("media", "title", "http://search.yahoo.com/mrss/");
+            mediaTitle.SetAttribute("type", "plain");
+            mediaTitle.InnerText = "Image Title";
+
+            mediaContent.AppendChild(mediaTitle);
+            itemNode.AppendChild(mediaContent);
+        }
+
         doc.Save(filePath);
 
         Console.WriteLine($"RSS file serialized as {filePath}");
     }
 
-    protected static RSS DeserializeXML(string path)
+    private static void AddAttribute(this XmlDocument doc, string xpath, string atName, string value)
     {
+        var attribute = doc.CreateAttribute(atName);
+        attribute.Value = value;
+        doc.SelectSingleNode(xpath)?.Attributes?.Append(attribute);
+    }
+
+    public static RSS DeserializeXML(string sitename)
+    {
+        var path = Path.Combine(Directory.GetCurrentDirectory(), sitename, "rss.xml");
         var xmlData = File.ReadAllText(path);
         var serializer = new XmlSerializer(typeof(RSS));
 
         using StringReader reader = new StringReader(xmlData);
-        return (RSS)serializer.Deserialize(reader)!;
+        try
+        {
+            return (RSS)serializer.Deserialize(reader)!;
+        }
+        catch
+        {
+            File.Delete(path);
+            throw;
+        }
     }
 
-    protected static HtmlDocument GetHTMLDocument(string url, string cookieFilePath = "")
+    public static HtmlDocument GetHTMLDocument(string url, string cookieFilePath = "")
     {
         // create new curl-impersonate process
         var process = new Process{
@@ -88,7 +103,7 @@ public class Website
                 output.Append(e.Data);
             }
         };
-        
+
         process.Start();
         process.BeginOutputReadLine();
         process.WaitForExit();
@@ -99,9 +114,9 @@ public class Website
         return htmlDocument;
     }
 
-    protected string AddFavicon(Media media, string url)
+    public static string AddFavicon(Media media, string url, string relativeMediaFolder)
     {
         media.Add("favicon", url);
-        return $"{Config.Url}/{relativeImgFolder}/favicon";
+        return $"{Config.Url}/{relativeMediaFolder}/favicon";
     }
 }
