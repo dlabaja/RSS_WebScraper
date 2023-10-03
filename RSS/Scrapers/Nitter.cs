@@ -57,9 +57,9 @@ public static class Nitter
 
             var post = GetHTMLDocument(postUrl, $"{Path.Combine(Directory.GetCurrentDirectory(), "data", "cookies", "nitter.txt")}").DocumentNode;
             Console.WriteLine($"{sitename}/{username}: Scraping post {i + 1}/{count}");
-            
+
             var title = new DescriptionBuilder(Media)
-                .AddSpanOrEmpty($"[🔁 {post.SelectNodes("//a[@class='fullname']")?[0].InnerText}] ",doc.SelectNodes("//div[@class='timeline-item ']")[i]?.InnerHtml.Contains("class=\"retweet-header\"") ?? false, false)
+                .AddSpanOrEmpty($"[🔁 {post.SelectNodes("//a[@class='fullname']")?[0].InnerText}] ", doc.SelectNodes("//div[@class='timeline-item ']")[i]?.InnerHtml.Contains("class=\"retweet-header\"") ?? false, false)
                 .AddParagraph($"{doc.SelectNodes("//div[@class='tweet-content media-body']")[i].InnerText}").ToString();
 
             var item = new Item{
@@ -68,7 +68,8 @@ public static class Nitter
                 Author = username,
                 GUID = id,
                 PubDate = TimeBuilder.ParseNitterTime(post.SelectSingleNode("//p[@class='tweet-published']").InnerText),
-                Description = ScrapeThreads(post, Media)};
+                Description = ScrapeThreads(post, Media)
+            };
             Rss.Channel.Items.Add(item);
         }
     }
@@ -82,6 +83,7 @@ public static class Nitter
                 return str[..i];
             }
         }
+
         return str;
     }
 
@@ -139,20 +141,28 @@ public static class Nitter
                 var view = item.SelectSingleNode("//span[@class='icon-play']/parent::div")?.InnerText.Trim();
 
                 d.AddSpan($"<b>{item.SelectSingleNode("//a[@class='fullname']").InnerText} ({item.SelectSingleNode("//a[@class='username']").InnerText})</b>          {item.SelectSingleNode("//span[@class='tweet-date']/a").GetAttributeValue("title", "")}")
-                    .AddSpanOrEmpty("<i>" + string.Join(", ", item.SelectNodes("//div[@class='replying-to']")?.Select(x => x.InnerText) ?? Enumerable.Empty<string>()) + "</i>",
-                        item.SelectNodes("//div[@class='replying-to']") != null)
-                    .AddParagraph(item.SelectSingleNode("//div[@class='tweet-content media-body']").InnerText)
-                    .AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => Config.NitterInstance + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeMediaFolder)
-                    .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
-                                   .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
-                               ?? Enumerable.Empty<string>(),
-                        relativeMediaFolder)
-                    .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
-                                   .Select(x => Config.NitterInstance + x.GetAttributeValue("src", ""))!
-                               ?? Enumerable.Empty<string>(),
-                        relativeMediaFolder) // gifs
-                    .AddQuoteTweet(item.SelectSingleNode("//div[@class='quote quote-big']")?.InnerText ?? null, relativeMediaFolder)
-                    .AddSpanOrEmpty($"💬 {comment}  ",
+                    .AddSpanOrEmpty("<i>" + string.Join(", ", item.SelectNodes("//div[@class='tweet-body']/div[@class='replying-to']")?.Select(x => x.InnerText) ?? Enumerable.Empty<string>()) + "</i>",
+                        item.SelectNodes("//div[@class='tweet-body']/div[@class='replying-to']") != null)
+                    .AddParagraph(item.SelectSingleNode("//div[@class='tweet-content media-body']").InnerText);
+
+                if (item.SelectSingleNode("//div[@class='quote quote-big']") != null)
+                {
+                    d.AddQuoteTweet(item.SelectSingleNode("//div[@class='quote quote-big']")?.InnerHtml ?? null, relativeMediaFolder);
+                }
+                else
+                {
+                    d.AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => Config.NitterInstance + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeMediaFolder)
+                        .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
+                                       .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
+                                   ?? Enumerable.Empty<string>(),
+                            relativeMediaFolder)
+                        .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
+                                       .Select(x => Config.NitterInstance + x.GetAttributeValue("src", ""))!
+                                   ?? Enumerable.Empty<string>(),
+                            relativeMediaFolder); // gifs
+                }
+                
+                d.AddSpanOrEmpty($"💬 {comment}  ",
                         !string.IsNullOrEmpty(comment),
                         false)
                     .AddSpanOrEmpty($"🔁 {retweet}  ",
@@ -173,7 +183,7 @@ public static class Nitter
                 {
                     d.AddParagraph("---------").AddBreak();
                 }
-                
+
             }
             catch
             {

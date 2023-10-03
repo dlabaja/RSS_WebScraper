@@ -146,9 +146,11 @@ public class DescriptionBuilder
         d.LoadHtml(quoteHtml);
         var doc = d.DocumentNode;
         
-        Description.Append("\n<i>");
-        Description.Append($"{doc.SelectSingleNode("//a[@class='fullname']").InnerText} | {TimeBuilder.ParseNitterTime(doc.SelectSingleNode("//span[@class='tweet-date']/a").GetAttributeValue("title", ""))}\n");
-        Description.Append(doc.SelectSingleNode("//div[@class='quote-text']").InnerText + "\n");
+        Description.Append("~<br><i>");
+        Description.Append($"{doc.SelectSingleNode("//a[@class='fullname']").InnerText} | {TimeBuilder.ParseNitterTime(doc.SelectSingleNode("//span[@class='tweet-date']/a").GetAttributeValue("title", ""))}<br>");
+        AddSpanOrEmpty(string.Join(", ", doc.SelectNodes("//div[@class='replying-to']")?.Select(x => x.InnerText) ?? Enumerable.Empty<string>()),
+            doc.SelectNodes("//div[@class='replying-to']") != null);
+        Description.Append(doc.SelectSingleNode("//div[@class='quote-text']").InnerText + "<br>");
         if (doc.SelectSingleNode("//a[@class='still-image']/img") != null)
         {
             var url = doc.SelectSingleNode("//a[@class='still-image']/img").GetAttributeValue("src", "");
@@ -159,7 +161,7 @@ public class DescriptionBuilder
             var url = doc.SelectSingleNode("//div[@class='attachment video-container']/video").GetAttributeValue("data-url", "");
             AddVideo(url[^20..], Config.NitterInstance + url, relativeMediaFolder);
         }
-        Description.Append("</i>\n");
+        Description.Append("</i><br>");
         return this;
     }
     
