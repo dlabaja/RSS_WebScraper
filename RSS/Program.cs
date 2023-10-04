@@ -1,72 +1,26 @@
-﻿using Notify;
-using RSS.Scrapers;
+﻿using RSS.Scrapers;
 using System.Globalization;
-using System.Timers;
 using StreamWriter = System.IO.StreamWriter;
 using Timer = System.Timers.Timer;
 
 namespace RSS;
 
-public static class Program
+public class Program
 {
-    private static void ScrapeBySitename(string sitename)
-    {
-        var siteNameToFunc = new Dictionary<string, Action>{
-            {
-                "picuki", () =>
-                {
-                    foreach (var username in Config.SitesAndUsernames[sitename])
-                    {
-                        Picuki.Scrape(username);
-                        if (!Config.SitesAndUsernames["picuki_stories_blacklist"].Contains(username))
-                        {
-                            PicukiStories.Scrape(username);
-                        }
+    private readonly Picuki picuki;
+    private readonly PicukiStories picukiStories;
+    private readonly Nitter nitter;
+    private readonly ProxiTok proxiTok;
 
-                        Picuki.Media.SaveJson();
-                        PicukiStories.Media.SaveJson();
-
-                        Website.SerializeXML<RSS>(Picuki.Rss, Picuki.SiteFolder, sitename);
-                        Website.SerializeXML<RSS>(PicukiStories.Rss, PicukiStories.SiteFolder, sitename);
-                    }
-
-                    Picuki.Media.DownloadAllMedia();
-                    PicukiStories.Media.DownloadAllMedia();
-                }
-            },{
-                "nitter", () =>
-                {
-                    foreach (var username in Config.SitesAndUsernames[sitename])
-                    {
-                        Nitter.Scrape(username, !Config.SitesAndUsernames["nitter_replies_blacklist"].Contains(username));
-                        Nitter.Media.SaveJson();
-                        Website.SerializeXML<RSS>(Nitter.Rss, Nitter.SiteFolder, sitename);
-                    }
-
-                    Nitter.Media.DownloadAllMedia();
-                }
-            },{
-                "proxitok", async () =>
-                {
-                    foreach (var username in Config.SitesAndUsernames[sitename])
-                    {
-                        await ProxiTok.Scrape(username);
-                        ProxiTok.Media.SaveJson();
-                        Website.SerializeXML<RSS>(ProxiTok.Rss, ProxiTok.SiteFolder, sitename);
-                    }
-
-                    ProxiTok.Media.DownloadAllMedia();
-                }
-            }
-        };
-
-        if (!siteNameToFunc.ContainsKey(sitename)) return;
-        siteNameToFunc[sitename]();
-    }
-
-    private static void Main()
+    private Program()
     {
         Config.LoadConfig();
+
+        picuki = new Picuki("picuki", "Picuki", "All photos in one place", "https://www.picuki.com", "https://www.picuki.com/p.svg");
+        picukiStories = new PicukiStories("picuki_stories", "Picuki stories", "All stories in one place", "https://www.picuki.com", "https://www.picuki.com/p.svg");
+        nitter = new Nitter("nitter", "Nitter", "All tweets in one place", Config.NitterInstance, $"{Config.NitterInstance}/logo.png?v=1");
+        proxiTok = new ProxiTok("proxitok", "ProxiTok", "All tiktoks in one place", Config.ProxiTokInstance, $"{Config.ProxiTokInstance}/favicon-32x32.png");
+
         new Thread(_ => new Server()).Start();
 
         Rescrape();
@@ -77,7 +31,54 @@ public static class Program
         timer.Start();
     }
 
-    private static void Rescrape()
+    private void ScrapeBySitename(string sitename)
+    {
+        var siteNameToFunc = new Dictionary<string, Action>{
+            {
+                "picuki", () =>
+                {
+                    foreach (var username in Config.SitesAndUsernames[sitename])
+                    {
+                        picuki.Scrape(username);
+                        if (!Config.SitesAndUsernames["picuki_stories_blacklist"].Contains(username))
+                        {
+                            picukiStories.Scrape(username);
+                        }
+                    }
+
+                    picuki.Media.DownloadAllMedia();
+                    picukiStories.Media.DownloadAllMedia();
+                }
+            },{
+                "nitter", () =>
+                {
+                    foreach (var username in Config.SitesAndUsernames[sitename])
+                    {
+                        nitter.Scrape(username, !Config.SitesAndUsernames["nitter_replies_blacklist"].Contains(username));
+                    }
+
+                    nitter.Media.DownloadAllMedia();
+                }
+            },{
+                "proxitok", async () =>
+                {
+                    foreach (var username in Config.SitesAndUsernames[sitename])
+                    {
+                        await proxiTok.Scrape(username);
+                    }
+
+                    proxiTok.Media.DownloadAllMedia();
+                }
+            }
+        };
+
+        if (!siteNameToFunc.ContainsKey(sitename)) return;
+        siteNameToFunc[sitename]();
+    }
+
+    private static void Main() => new Program();
+
+    private void Rescrape()
     {
         Config.LoadConfig();
         foreach (var item in Config.SitesAndUsernames)

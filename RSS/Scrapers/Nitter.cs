@@ -6,35 +6,9 @@ using static RSS.Scrapers.Website;
 
 namespace RSS.Scrapers;
 
-public static class Nitter
+public class Nitter : Website
 {
-    public static Media Media { get; }
-    public static RSS Rss { get; }
-    public static string SiteFolder { get; }
-    static string relativeMediaFolder;
-    static string sitename;
-
-    private static RSS GetRSS()
-    {
-        if (File.Exists(Path.Combine(SiteFolder, "rss.xml")))
-            return DeserializeXML(sitename);
-
-        return new RSS{
-            Channel = new Channel{
-                Title = "Nitter",
-                Link = Config.NitterInstance,
-                Items = new List<Item>(),
-                Description = "All tweets in one place",
-                Image = new Image{
-                    Url = AddFavicon(Media, $"{Config.NitterInstance}/logo.png?v=1", relativeMediaFolder),
-                    Title = "Nitter",
-                    Link = Config.NitterInstance
-                }
-            }
-        };
-    }
-
-    public static void Scrape(string username, bool allowReplies)
+    public void Scrape(string username, bool allowReplies)
     {
         var doc = GetHTMLDocument(allowReplies ? $"{Config.NitterInstance}/{username}/with_replies" : $"{Config.NitterInstance}/{username}").DocumentNode;
         if (doc.InnerHtml.Contains("<title>Redirecting</title>")) return;
@@ -49,7 +23,7 @@ public static class Nitter
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"\d+").Value;
-            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
                 Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
@@ -68,10 +42,13 @@ public static class Nitter
                 Author = username,
                 GUID = id,
                 PubDate = TimeBuilder.ParseNitterTime(post.SelectSingleNode("//p[@class='tweet-published']").InnerText),
-                Description = ScrapeThreads(post, Media)
+                Description = ScrapeThreads(post)
             };
-            Rss.Channel.Items.Add(item);
+            rss.Channel.Items.Add(item);
         }
+
+        Media.SaveJson();
+        SerializeXML();
     }
 
     private static string CutString(string str, int lastIndex)
@@ -87,9 +64,9 @@ public static class Nitter
         return str;
     }
 
-    private static string ScrapeThreads(HtmlNode post, Media media)
+    private string ScrapeThreads(HtmlNode post)
     {
-        var d = new DescriptionBuilder(media);
+        var d = new DescriptionBuilder(Media);
 
         var nodes = new HtmlNodeCollection(post);
         var xpathExpressions = new List<string>{
@@ -161,7 +138,7 @@ public static class Nitter
                                    ?? Enumerable.Empty<string>(),
                             relativeMediaFolder); // gifs
                 }
-                
+
                 d.AddSpanOrEmpty($"💬 {comment}  ",
                         !string.IsNullOrEmpty(comment),
                         false)
@@ -194,15 +171,8 @@ public static class Nitter
         return d.ToString();
     }
 
-    static Nitter()
+    public Nitter(string sitename, string title, string description, string link, string faviconUrl) : base(sitename, title, description, link, faviconUrl)
     {
-        sitename = "nitter";
-        Media = new Media(sitename);
 
-        SiteFolder = Path.Combine(Directory.GetCurrentDirectory(), sitename);
-        relativeMediaFolder = Path.Combine(sitename, "media");
-
-        Directory.CreateDirectory(Path.Combine(SiteFolder, "media"));
-        Rss = GetRSS();
     }
 }
