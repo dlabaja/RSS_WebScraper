@@ -9,7 +9,7 @@ Nitter (Twitter/X)\
 ProxiTok (Tiktok)
 
 Installation:
-1. Get the release from [here](https://github.com/dlabaja/RSS_WebScraper/releases/tag/1.0)
+1. Get the release from [here](https://github.com/dlabaja/RSS_WebScraper/releases/latest)
 2. Extract it into any folder
 3. Set values in data/config.json:
 - url - url of the local rss server
