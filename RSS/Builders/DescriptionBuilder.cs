@@ -1,5 +1,4 @@
 using HtmlAgilityPack;
-using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -7,8 +6,8 @@ namespace RSS.Builders;
 
 public class DescriptionBuilder
 {
-    protected StringBuilder Description = new StringBuilder();
-    protected Media media;
+    private StringBuilder Description = new StringBuilder();
+    private Media media;
 
     public DescriptionBuilder(Media media)
     {

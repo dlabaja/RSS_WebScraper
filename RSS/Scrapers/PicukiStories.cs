@@ -1,15 +1,15 @@
 using RSS.Builders;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using static RSS.Scrapers.Website;
 
 namespace RSS.Scrapers;
 
 public class PicukiStories : Website
 {
-    public void Scrape(string username)
+    public async void Scrape(string username)
     {
         var doc = GetHTMLDocument($"https://www.picuki.com/profile/{username}").DocumentNode;
         if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
@@ -18,7 +18,7 @@ public class PicukiStories : Website
         var stories = ScrapeStories($"{Config.CurlImpersonateScriptLocation} -X POST https://www.picuki.com/app/controllers/ajax.php -d username={username} -d query={userId} -d type=story");
         foreach (var (story, i) in stories.WithIndex())
         {
-            var id = Convert.ToBase64String(Encoding.UTF8.GetBytes(Regex.Match(story, "href=\"([^\"]*)\"").Groups[1].Value)[^50..^20]);
+            var id = await CalculateImageHash(Regex.Match(story, "data-video-poster=\"([^\"]*)\"").Groups[1].Value);
             var time = Regex.Match(story, "stories_count\\\">([^<]*)").Groups[1].Value.Trim();
 
             if (TimeBuilder.ParsePicukiTime(time) == null)
@@ -60,6 +60,19 @@ public class PicukiStories : Website
 
         Media.SaveJson();
         SerializeXML();
+    }
+
+    async private static Task<string> CalculateImageHash(string imageUrl)
+    {
+        using HttpClient client = new HttpClient();
+
+        var response = await client.GetAsync(imageUrl);
+        var imageBytes = await response.Content.ReadAsByteArrayAsync();
+
+        using SHA256 sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(imageBytes);
+
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLower()[..30];
     }
 
     private static IEnumerable<string> ScrapeStories(string arguments)

@@ -2,7 +2,6 @@ using HtmlAgilityPack;
 using RSS.Builders;
 using System.Text.RegularExpressions;
 using System.Web;
-using static RSS.Scrapers.Website;
 
 namespace RSS.Scrapers;
 
@@ -12,6 +11,7 @@ public class Nitter : Website
     {
         var doc = GetHTMLDocument(allowReplies ? $"{Config.NitterInstance}/{username}/with_replies" : $"{Config.NitterInstance}/{username}").DocumentNode;
         if (doc.InnerHtml.Contains("<title>Redirecting</title>")) return;
+        if (doc.InnerHtml == string.Empty) throw new RSSException($"HTML doc for username {username} at {Config.NitterInstance}/{username} is empty (Probably invalid/broken nitter instance?)");
 
         try
         {

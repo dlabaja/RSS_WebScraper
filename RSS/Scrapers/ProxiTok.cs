@@ -1,5 +1,4 @@
 using System.Xml.Serialization;
-using static RSS.Scrapers.Website;
 
 namespace RSS.Scrapers;
 
@@ -35,6 +34,7 @@ public class ProxiTok : Website
         {
             item.Author = username;
             rss.Channel.Items.Add(item);
+            Console.WriteLine($"{sitename}: Scraping {username}");
         }
     }
 
