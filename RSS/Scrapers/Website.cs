@@ -115,13 +115,13 @@ public class Website
         }
     }
 
-    protected static HtmlDocument GetHTMLDocument(string url, string cookieFilePath = "")
+    protected static HtmlDocument GetHTMLDocument(string url, string cookie = "")
     {
         // create new curl-impersonate process
         var process = new Process{
             StartInfo = new ProcessStartInfo{
                 FileName = "/bin/bash",
-                Arguments = $"{Config.CurlImpersonateScriptLocation} \"{url}\" {(!string.IsNullOrEmpty(cookieFilePath) ? $"-b \"{cookieFilePath}\"" : "")}",
+                Arguments = $"{Config.CurlImpersonateScriptLocation} \"{url}\" {(!string.IsNullOrEmpty(cookie) ? $"-b {cookie}" : "")}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,

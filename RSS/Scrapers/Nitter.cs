@@ -29,7 +29,7 @@ public class Nitter : Website
                 continue;
             }
 
-            var post = GetHTMLDocument(postUrl, $"{Path.Combine(Directory.GetCurrentDirectory(), "data", "cookies", "nitter.txt")}").DocumentNode;
+            var post = GetHTMLDocument(postUrl, "hlsPlayback=on").DocumentNode;
             Console.WriteLine($"{sitename}/{username}: Scraping post {i + 1}/{count}");
 
             var title = new DescriptionBuilder(Media)
