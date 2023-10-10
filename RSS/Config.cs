@@ -20,6 +20,7 @@ public static class Config
         {
             using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "config.json"));
             writer.Write("{\n    \"url\": \"http://localhost:8000\",\n    \"ffmpeg_location\": \"<path to ffmpeg bin>\",\n    \"curl_impersonate_script_location\": \"<path to curl-impersonate script (eg curl_ff109)>\",\n    \"scrape_timer\": 15,\n    \"nitter_instance\": \"https://nitter.net\", \n    \"proxitok_instance\": \"https://proxitok.pabloferreiro.es\",\n    \"sites_and_usernames\": {\n        \"nitter_replies_blacklist\": [],\n        \"picuki_stories_blacklist\": [],\n        \"picuki\": [],\n        \"nitter\": [],\n        \"proxitok\": []\n    }\n}");
+            writer.Flush();
             throw new RSSException($"config.json created in {Directory.GetCurrentDirectory()}, please fill it and start the scraper again");
         }
 

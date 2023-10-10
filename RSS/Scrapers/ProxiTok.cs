@@ -35,7 +35,7 @@ public class ProxiTok : Website
         {
             if (Regex.IsMatch(item.Description, "<source src=\"(.*)\" type"))
             {
-                var url = Regex.Match(item.Description, "<source src=\"(.*)\" type").Groups[1].Value;
+                var url = Config.ProxiTokInstance + Regex.Match(item.Description, "<source src=\"(.*)\" type").Groups[1].Value;
                 Media.Add(item.GUID, url);
                 item.Description = item.Description.Replace(url, $"{Config.Url}/proxitok/media/{item.GUID}");
             }
@@ -44,23 +44,23 @@ public class ProxiTok : Website
                 var matches = Regex.Matches(item.Description, "<img src=\"([^\"]+)\">");
                 for (int i = 0; i < matches.Count; i++)
                 {
-                    var url = matches[i].Groups[1].Value;
+                    var url = Config.ProxiTokInstance + matches[i].Groups[1].Value;
                     var id = $"{item.GUID}_{i}";
                     Media.Add(id, url);
                     item.Description = item.Description.Replace(url, $"{Config.Url}/proxitok/media/{id}");
                 }
             }
-         
+
             item.Author = username;
             rss.Channel.Items.Add(item);
             Console.WriteLine($"{sitename}: Scraping {username}");
         }
-        
+
         SerializeXML();
     }
 
     public ProxiTok(string sitename, string title, string description, string link, string faviconUrl) : base(sitename, title, description, link, faviconUrl)
     {
-        
+
     }
 }
