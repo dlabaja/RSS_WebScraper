@@ -14,9 +14,27 @@ public static class Config
 
     public static void LoadConfig()
     {
-        string jsonText = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "data", "config.json"));
+        var path = Path.Combine(Directory.GetCurrentDirectory(), "config.json");
 
-        using JsonDocument document = JsonDocument.Parse(jsonText);
+        if (!File.Exists(path))
+        {
+            using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "config.json"));
+            writer.Write("{\n    \"url\": \"http://localhost:8000\",\n    \"ffmpeg_location\": \"<path to ffmpeg bin>\",\n    \"curl_impersonate_script_location\": \"<path to curl-impersonate script (eg curl_ff109)>\",\n    \"scrape_timer\": 15,\n    \"nitter_instance\": \"https://nitter.net\", \n    \"proxitok_instance\": \"https://proxitok.pabloferreiro.es\",\n    \"sites_and_usernames\": {\n        \"nitter_replies_blacklist\": [],\n        \"picuki_stories_blacklist\": [],\n        \"picuki\": [],\n        \"nitter\": [],\n        \"proxitok\": []\n    }\n}");
+            throw new RSSException($"config.json created in {Directory.GetCurrentDirectory()}, please fill it and start the scraper again");
+        }
+
+        string jsonText = File.ReadAllText(path);
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(jsonText);
+        }
+        catch
+        {
+            throw new RSSException($"Invalid JSON format in {path}");
+        }
+
         JsonElement root = document.RootElement;
 
         try
@@ -51,8 +69,8 @@ public static class Config
         catch
         {
             throw new RSSException($"Invalid config.json file, check if\n" +
-                                $"1). It's in the {Directory.GetCurrentDirectory()}/config.json location\n" +
-                                $"2). The json is valid and contains all required fields");
+                                   $"1). It's in the {Directory.GetCurrentDirectory()}/config.json location\n" +
+                                   $"2). The json is valid and contains all required fields");
         }
     }
 }

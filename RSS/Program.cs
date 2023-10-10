@@ -102,7 +102,7 @@ public class Program
             "proxitok"
         };
 
-        using StreamWriter url_writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "data", "rss_urls.txt"));
+        using StreamWriter url_writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "rss_urls.txt"));
         foreach (var site in sites)
         {
             // http://localhost:8000/nitter/rss.xml

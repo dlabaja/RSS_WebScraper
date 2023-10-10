@@ -29,7 +29,7 @@ public sealed class RSSException : Exception
         }
         catch {}
 
-        using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "data", "crash_report.txt"));
+        using StreamWriter writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "crash_report.txt"));
         writer.WriteLine(msg);
         writer.WriteLine(InnerException);
         writer.WriteLine(StackTrace);
