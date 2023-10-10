@@ -22,7 +22,7 @@ public class Nitter : Website
         var count = doc.SelectNodes("//div[@class='timeline-item ']").Count;
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
         {
-            var id = Regex.Match(postUrl, @"\d+").Value;
+            var id = Regex.Match(postUrl, @"/status/(\d+)").Groups[1].Value;
             if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
                 Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
@@ -46,8 +46,7 @@ public class Nitter : Website
             };
             rss.Channel.Items.Add(item);
         }
-
-        Media.SaveJson();
+        
         SerializeXML();
     }
 

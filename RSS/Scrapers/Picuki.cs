@@ -53,8 +53,7 @@ public class Picuki : Website
             }
             catch {}
         }
-
-        Media.SaveJson();
+        
         SerializeXML();
     }
 

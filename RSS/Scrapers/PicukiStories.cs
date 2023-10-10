@@ -57,8 +57,7 @@ public class PicukiStories : Website
 
             rss.Channel.Items.Add(item);
         }
-
-        Media.SaveJson();
+        
         SerializeXML();
     }
 
@@ -103,9 +102,9 @@ public class PicukiStories : Website
         process.BeginOutputReadLine();
         process.WaitForExit();
 
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
         try
         {
+            using JsonDocument document = JsonDocument.Parse(output.ToString());
             return document.RootElement.GetProperty("stories_container").GetString()?.Split("<div class=\"item\">").Skip(1).ToArray() ?? Array.Empty<string>();
         }
         catch

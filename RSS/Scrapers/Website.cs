@@ -48,6 +48,8 @@ public class Website
 
     protected void SerializeXML()
     {
+        Media.SaveJson();
+        
         XmlSerializer serializer = new XmlSerializer(typeof(RSS));
         var filePath = Path.Combine(siteFolder, "rss.xml");
 
