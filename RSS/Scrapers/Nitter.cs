@@ -15,7 +15,7 @@ public class Nitter : Website
 
         try
         {
-            Media.Add(username, Config.NitterInstance + doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", ""));
+            Media.Add(username, "{NITTER_URL}" + doc.SelectSingleNode("//a[@class='profile-card-avatar']/img").GetAttributeValue("src", ""));
         }
         catch { return; }
 
@@ -127,13 +127,13 @@ public class Nitter : Website
                 }
                 else
                 {
-                    d.AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => Config.NitterInstance + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeMediaFolder)
+                    d.AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => "{NITTER_URL}" + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeMediaFolder)
                         .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
                                        .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
                                    ?? Enumerable.Empty<string>(),
                             relativeMediaFolder)
                         .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
-                                       .Select(x => Config.NitterInstance + x.GetAttributeValue("src", ""))!
+                                       .Select(x => "{NITTER_URL}" + x.GetAttributeValue("src", ""))!
                                    ?? Enumerable.Empty<string>(),
                             relativeMediaFolder); // gifs
                 }

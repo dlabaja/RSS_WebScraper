@@ -11,7 +11,7 @@ public class ProxiTok : Website
 
         try
         {
-            Media.Add(username, doc.SelectSingleNode("//figure[@class='image is-inline-block is-128x128']/img").GetAttributeValue("src", ""));
+            Media.Add(username, "{PROXITOK_URL}" + doc.SelectSingleNode("//figure[@class='image is-inline-block is-128x128']/img").GetAttributeValue("src", ""));
         }
         catch { return; }
 
@@ -35,7 +35,7 @@ public class ProxiTok : Website
         {
             if (Regex.IsMatch(item.Description, "<source src=\"(.*)\" type"))
             {
-                var url = Config.ProxiTokInstance + Regex.Match(item.Description, "<source src=\"(.*)\" type").Groups[1].Value;
+                var url = "{PROXITOK_URL}" + Regex.Match(item.Description, "<source src=\"(.*)\" type").Groups[1].Value;
                 Media.Add(item.GUID, url);
                 item.Description = item.Description.Replace(url, $"{Config.Url}/proxitok/media/{item.GUID}");
             }
@@ -44,7 +44,7 @@ public class ProxiTok : Website
                 var matches = Regex.Matches(item.Description, "<img src=\"([^\"]+)\">");
                 for (int i = 0; i < matches.Count; i++)
                 {
-                    var url = Config.ProxiTokInstance + matches[i].Groups[1].Value;
+                    var url = "{PROXITOK_URL}" + matches[i].Groups[1].Value;
                     var id = $"{item.GUID}_{i}";
                     Media.Add(id, url);
                     item.Description = item.Description.Replace(url, $"{Config.Url}/proxitok/media/{id}");

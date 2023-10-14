@@ -18,8 +18,8 @@ public class Program
 
         picuki = new Picuki("picuki", "Picuki", "All photos in one place", "https://www.picuki.com", "https://www.picuki.com/p.svg");
         picukiStories = new PicukiStories("picuki_stories", "Picuki stories", "All stories in one place", "https://www.picuki.com", "https://www.picuki.com/p.svg");
-        nitter = new Nitter("nitter", "Nitter", "All tweets in one place", Config.NitterInstance, $"{Config.NitterInstance}/logo.png?v=1");
-        proxiTok = new ProxiTok("proxitok", "ProxiTok", "All tiktoks in one place", Config.ProxiTokInstance, $"{Config.ProxiTokInstance}/favicon-32x32.png");
+        nitter = new Nitter("nitter", "Nitter", "All tweets in one place", Config.NitterInstance, "{NITTER_URL}/logo.png?v=1");
+        proxiTok = new ProxiTok("proxitok", "ProxiTok", "All tiktoks in one place", Config.ProxiTokInstance, "{PROXITOK_URL}/favicon-32x32.png");
 
         new Thread(_ => new Server()).Start();
 
