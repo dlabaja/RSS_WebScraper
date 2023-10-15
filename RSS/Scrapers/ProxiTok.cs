@@ -1,3 +1,4 @@
+using RSS.Builders;
 using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 
@@ -37,24 +38,25 @@ public class ProxiTok : Website
             {
                 var url = "{PROXITOK_URL}" + Regex.Match(item.Description, "<source src=\"(.*)\" type").Groups[1].Value;
                 Media.Add(item.GUID, url);
-                item.Description = $"<![CDATA[ <p><video controls><source src='{Config.Url}/proxitok/media/{item.GUID}'></video></p>";
-                item.Link = $"{Config.Url}/proxitok/media/{item.GUID}";
+                item.Description = new DescriptionBuilder(Media).AddVideo(item.GUID, url, relativeMediaFolder).ToString();
             }
             else
             {
                 var matches = Regex.Matches(item.Description, "<img src=\"([^\"]+)\">");
+                var d = new DescriptionBuilder(Media);
                 for (int i = 0; i < matches.Count; i++)
                 {
                     var url = "{PROXITOK_URL}" + matches[i].Groups[1].Value;
                     var id = $"{item.GUID}_{i}";
-                    var link = $"{Config.Url}/proxitok/media/{id}";
                     Media.Add(id, url);
-                    item.Description = $"<![CDATA[ <p><img src='{Config.Url}/proxitok/media/{id}'></p>";
-                    item.Link = link;
+                    d.AddImage(id, url, relativeMediaFolder);
                 }
+
+                item.Description = d.ToString();
             }
 
             item.Author = username;
+            item.Link = $"{Config.ProxiTokInstance}/@{username}";
             Rss.Channel.Items.Add(item);
             Console.WriteLine($"{sitename}: Scraping {username}");
         }

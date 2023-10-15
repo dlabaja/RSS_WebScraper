@@ -11,7 +11,7 @@ public class DescriptionBuilder
 
     public DescriptionBuilder(Media media)
     {
-        Description.Append("<![CDATA[");
+        Description.Append("<![CDATA[<span></span>");
         this.media = media;
     }
 
