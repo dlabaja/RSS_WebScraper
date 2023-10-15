@@ -58,12 +58,7 @@ public class Media
                 try
                 {
                     if (File.Exists(Path.Combine(mediaFolder, id))) continue;
-                    if (url.Contains(".m3u8"))
-                    {
-                        ConvertToMp4(url, mediaFolder, id);
-                        continue;
-                    }
-
+                    
                     DownloadMedia(url, mediaFolder, id);
 
                     if (!path.Contains("proxitok/media.json")) continue;
@@ -76,7 +71,6 @@ public class Media
                     {
                         CompressVideo(Path.Combine(mediaFolder, id));
                     }
-
                 }
                 catch {}
             }
@@ -119,7 +113,7 @@ public class Media
         var process = new Process{
             StartInfo = new ProcessStartInfo{
                 FileName = Config.FFmpegLocation,
-                Arguments = $"-i {path} -vf \"scale=trunc(iw/4)*2:trunc(ih/4)*2\" -c:v libx265 -crf 28 -f mp4 {path + "c"} -y",
+                Arguments = $"-i {path} -vcodec libvpx -vf \"scale=trunc(iw/4)*2:trunc(ih/4)*2\" -f webm -threads 12 {path + "c"} -y",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -143,14 +137,14 @@ public class Media
         File.Replace(path + "c", path, null);
     }
 
-    private static string ReplaceUrlPlaceholders(string url)
+    public static string ReplaceUrlPlaceholders(string url)
     {
         url = url.Replace("{PROXITOK_URL}", Config.ProxiTokInstance);
         url = url.Replace("{NITTER_URL}", Config.NitterInstance);
         return url;
     }
 
-    private static void ConvertToMp4(string url, string path, string id)
+    public static void ConvertToMp4(string url, string path, string id)
     {
         // create new ffmpeg process
         var process = new Process{

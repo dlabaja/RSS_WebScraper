@@ -18,7 +18,7 @@ public class Picuki : Website
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='photo']/a").Select(x => x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"\/media\/(\d+)").Groups[1].ToString();
-            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
                 Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
@@ -49,7 +49,7 @@ public class Picuki : Website
                             relativeMediaFolder)
                         .AddComments(ScrapeComments(post)).ToString()
                 };
-                rss.Channel.Items.Add(item);
+                Rss.Channel.Items.Add(item);
             }
             catch {}
         }

@@ -26,7 +26,7 @@ public class PicukiStories : Website
                 break;
             }
 
-            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
                 Console.WriteLine($"{sitename}/{username}: Story {i + 1} ({time}) already scraped");
                 continue;
@@ -36,7 +36,7 @@ public class PicukiStories : Website
 
             var item = new Item{
                 Title = $"{username} ({DateTime.Parse(TimeBuilder.ParsePicukiTime(time)!):dd MMM yyyy HH:mm:ss})",
-                Link = rss.Channel.Link + $"/profile/{username}",
+                Link = Rss.Channel.Link + $"/profile/{username}",
                 Author = username,
                 PubDate = TimeBuilder.ParsePicukiTime(time),
                 GUID = id
@@ -55,7 +55,7 @@ public class PicukiStories : Website
 
             item.Description = d.ToString();
 
-            rss.Channel.Items.Add(item);
+            Rss.Channel.Items.Add(item);
         }
         
         SerializeXML();

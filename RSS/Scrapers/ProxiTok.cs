@@ -31,13 +31,14 @@ public class ProxiTok : Website
         using StringReader reader = new StringReader(xml);
         var xmlRss = (RSS)serializer.Deserialize(reader)!;
 
-        foreach (var item in xmlRss.Channel.Items.Where(x => !rss.Channel.Items.Select(y => y.GUID).Contains(x.GUID)))
+        foreach (var item in xmlRss.Channel.Items.Where(x => !Rss.Channel.Items.Select(y => y.GUID).Contains(x.GUID)))
         {
             if (Regex.IsMatch(item.Description, "<source src=\"(.*)\" type"))
             {
                 var url = "{PROXITOK_URL}" + Regex.Match(item.Description, "<source src=\"(.*)\" type").Groups[1].Value;
                 Media.Add(item.GUID, url);
-                item.Description = item.Description.Replace(url, $"{Config.Url}/proxitok/media/{item.GUID}");
+                item.Description = $"<![CDATA[ <p><video controls><source src='{Config.Url}/proxitok/media/{item.GUID}'></video></p>";
+                item.Link = $"{Config.Url}/proxitok/media/{item.GUID}";
             }
             else
             {
@@ -46,13 +47,15 @@ public class ProxiTok : Website
                 {
                     var url = "{PROXITOK_URL}" + matches[i].Groups[1].Value;
                     var id = $"{item.GUID}_{i}";
+                    var link = $"{Config.Url}/proxitok/media/{id}";
                     Media.Add(id, url);
-                    item.Description = item.Description.Replace(url, $"{Config.Url}/proxitok/media/{id}");
+                    item.Description = $"<![CDATA[ <p><img src='{Config.Url}/proxitok/media/{id}'></p>";
+                    item.Link = link;
                 }
             }
 
             item.Author = username;
-            rss.Channel.Items.Add(item);
+            Rss.Channel.Items.Add(item);
             Console.WriteLine($"{sitename}: Scraping {username}");
         }
 

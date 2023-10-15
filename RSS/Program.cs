@@ -52,6 +52,8 @@ public class Program
             },{
                 "nitter", () =>
                 {
+                    nitter.Rss.Channel.Link = Config.NitterInstance;
+                    nitter.Rss.Channel.Image.Link = Config.NitterInstance;
                     foreach (var username in Config.SitesAndUsernames[sitename])
                     {
                         nitter.Scrape(username, !Config.SitesAndUsernames["nitter_replies_blacklist"].Contains(username));
@@ -62,6 +64,8 @@ public class Program
             },{
                 "proxitok", async () =>
                 {
+                    proxiTok.Rss.Channel.Link = Config.ProxiTokInstance;
+                    proxiTok.Rss.Channel.Image.Link = Config.ProxiTokInstance;
                     foreach (var username in Config.SitesAndUsernames[sitename])
                     {
                         await proxiTok.Scrape(username);

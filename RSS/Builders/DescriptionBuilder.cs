@@ -78,13 +78,19 @@ public class DescriptionBuilder
         return this;
     }
 
-    public DescriptionBuilder AddVideos(IEnumerable<string> urls, string relativeMediaFolder)
+    public DescriptionBuilder AddVideos(IEnumerable<string> urls, string relativeMediaFolder, bool isM3U8 = false)
     {
         foreach (var url in urls)
         {
             var id = Regex.IsMatch(url, @"[%\/]([A-Za-z0-9\-_]+)\.m") ? Regex.Match(url, @"[%\/]([A-Za-z0-9\-_]+)\.m").Groups[1].Value : url[^40..];
             media.Add(id, url);
             Description.Append($"<video controls><source src='{Config.Url}/{relativeMediaFolder}/{id}'></video><br>");
+
+            var mediaFolder = Path.Combine(Directory.GetCurrentDirectory(), relativeMediaFolder);
+            if (isM3U8 && !File.Exists(Path.Combine(mediaFolder, id)))
+            {
+                Media.ConvertToMp4(Media.ReplaceUrlPlaceholders(url), mediaFolder, id);
+            }
         }
 
         return this;

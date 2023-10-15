@@ -23,7 +23,7 @@ public class Nitter : Website
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"/status/(\d+)").Groups[1].Value;
-            if (rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
             {
                 Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
@@ -44,7 +44,7 @@ public class Nitter : Website
                 PubDate = TimeBuilder.ParseNitterTime(post.SelectSingleNode("//p[@class='tweet-published']").InnerText),
                 Description = ScrapeThreads(post)
             };
-            rss.Channel.Items.Add(item);
+            Rss.Channel.Items.Add(item);
         }
         
         SerializeXML();
@@ -129,9 +129,9 @@ public class Nitter : Website
                 {
                     d.AddImages(item.SelectNodes("//a[@class='still-image']/img")?.Select(x => "{NITTER_URL}" + x.GetAttributeValue("src", "")) ?? Enumerable.Empty<string>(), relativeMediaFolder)
                         .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
-                                       .Select(x => Regex.Match(HttpUtility.UrlDecode(x.GetAttributeValue("data-url", "")), @"(https:\/\/video\.twimg\.com\/[^.]+\.m3u8)").Value)!
+                                       .Select(x => "{NITTER_URL}" + x.GetAttributeValue("data-url", ""))!
                                    ?? Enumerable.Empty<string>(),
-                            relativeMediaFolder)
+                            relativeMediaFolder, true)
                         .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
                                        .Select(x => "{NITTER_URL}" + x.GetAttributeValue("src", ""))!
                                    ?? Enumerable.Empty<string>(),

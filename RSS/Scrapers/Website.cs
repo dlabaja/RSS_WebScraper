@@ -9,7 +9,7 @@ namespace RSS.Scrapers;
 public class Website
 {
     public Media Media { get; }
-    protected RSS rss { get; }
+    public RSS Rss { get; }
     private string siteFolder { get; }
     protected readonly string relativeMediaFolder;
     protected readonly string sitename;
@@ -23,7 +23,7 @@ public class Website
         relativeMediaFolder = Path.Combine(sitename, "media");
 
         Directory.CreateDirectory(Path.Combine(siteFolder, "media"));
-        rss = GetRSS(title, description, link, faviconUrl);
+        Rss = GetRSS(title, description, link, faviconUrl);
     }
 
     private RSS GetRSS(string title, string description, string link, string faviconUrl)
@@ -61,12 +61,12 @@ public class Website
         using var writer = new StreamWriter(filePath);
         try
         {
-            rss.Channel.Items.RemoveAll(x => !Config.SitesAndUsernames[sitename].Contains(x.Author));
+            Rss.Channel.Items.RemoveAll(x => !Config.SitesAndUsernames[sitename].Contains(x.Author));
         }
         catch {}
 
-        rss.Channel.Items.Sort((x, y) => DateTime.Parse(x.PubDate).CompareTo(DateTime.Parse(y.PubDate)));
-        serializer.Serialize(writer, rss);
+        Rss.Channel.Items.Sort((x, y) => DateTime.Parse(x.PubDate).CompareTo(DateTime.Parse(y.PubDate)));
+        serializer.Serialize(writer, Rss);
 
         var doc = new XmlDocument();
         doc.Load(filePath);
