@@ -29,8 +29,17 @@ public class ProxiTok : Website
 
         var serializer = new XmlSerializer(typeof(RSS));
 
+        RSS xmlRss;
         using StringReader reader = new StringReader(xml);
-        var xmlRss = (RSS)serializer.Deserialize(reader)!;
+        try
+        {
+            xmlRss = (RSS)serializer.Deserialize(reader)!;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"ProxiTok XML ERROR for user {username}, this is probably fault on site's site\n{e.Message}\n{e.Source}\n{e.InnerException}");
+            return;
+        }
 
         foreach (var item in xmlRss.Channel.Items.Where(x => !Rss.Channel.Items.Select(y => y.GUID).Contains(x.GUID)))
         {
