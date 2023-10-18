@@ -11,7 +11,11 @@ public class Nitter : Website
     {
         var doc = GetHTMLDocument(allowReplies ? $"{Config.NitterInstance}/{username}/with_replies" : $"{Config.NitterInstance}/{username}").DocumentNode;
         if (doc.InnerHtml.Contains("<title>Redirecting</title>")) return;
-        if (doc.InnerHtml == string.Empty) throw new RSSException($"HTML doc for username {username} at {Config.NitterInstance}/{username} is empty (Probably invalid/broken nitter instance?)");
+        if (doc.InnerHtml == string.Empty)
+        {
+            Console.WriteLine($"HTML doc for username {username} at {Config.NitterInstance}/{username} is empty (Probably invalid/broken nitter instance or rate limit?)");
+            return;
+        }
 
         try
         {
@@ -46,7 +50,7 @@ public class Nitter : Website
             };
             Rss.Channel.Items.Add(item);
         }
-        
+
         SerializeXML();
     }
 
@@ -131,7 +135,8 @@ public class Nitter : Website
                         .AddVideos(item.SelectNodes("//div[@class='attachment video-container']/video")?
                                        .Select(x => "{NITTER_URL}" + x.GetAttributeValue("data-url", ""))!
                                    ?? Enumerable.Empty<string>(),
-                            relativeMediaFolder, true)
+                            relativeMediaFolder,
+                            true)
                         .AddVideos(item.SelectNodes("//video[@class='gif']/source")?
                                        .Select(x => "{NITTER_URL}" + x.GetAttributeValue("src", ""))!
                                    ?? Enumerable.Empty<string>(),
