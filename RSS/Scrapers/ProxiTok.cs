@@ -24,7 +24,8 @@ public class ProxiTok : Website
         }
         catch
         {
-            throw new RSSException("ProxiTok instance down or invalid username");
+            Console.WriteLine($"ProxiTok instance down or invalid username '{username}'");
+            return;
         }
 
         var serializer = new XmlSerializer(typeof(RSS));
