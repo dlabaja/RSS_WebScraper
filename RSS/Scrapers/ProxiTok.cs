@@ -70,8 +70,6 @@ public class ProxiTok : Website
             Rss.Channel.Items.Add(item);
             Console.WriteLine($"{sitename}: Scraping {username}");
         }
-
-        SerializeXML();
     }
 
     public ProxiTok(string sitename, string title, string description, string link, string faviconUrl) : base(sitename, title, description, link, faviconUrl)

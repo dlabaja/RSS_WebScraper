@@ -11,6 +11,7 @@ public class Program
     private readonly PicukiStories picukiStories;
     private readonly Nitter nitter;
     private readonly ProxiTok proxiTok;
+    private readonly Invidious invidious;
 
     private Program()
     {
@@ -20,6 +21,7 @@ public class Program
         picukiStories = new PicukiStories("picuki_stories", "Picuki stories", "All stories in one place", "https://www.picuki.com", "https://www.picuki.com/p.svg");
         nitter = new Nitter("nitter", "Nitter", "All tweets in one place", Config.NitterInstance, "{NITTER_URL}/logo.png?v=1");
         proxiTok = new ProxiTok("proxitok", "ProxiTok", "All tiktoks in one place", Config.ProxiTokInstance, "{PROXITOK_URL}/favicon-32x32.png");
+        invidious = new Invidious("invidious", "Invidious", "All videos in one place", Config.InvidiousInstance, "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Invidious-logo.svg/120px-Invidious-logo.svg.png");
 
         new Thread(_ => new Server()).Start();
 
@@ -46,6 +48,9 @@ public class Program
                         }
                     }
 
+                    picuki.SerializeXML();
+                    picukiStories.SerializeXML();
+                    
                     picuki.Media.DownloadAllMedia();
                     picukiStories.Media.DownloadAllMedia();
                 }
@@ -59,6 +64,8 @@ public class Program
                         nitter.Scrape(username, !Config.SitesAndUsernames["nitter_replies_blacklist"].Contains(username));
                     }
 
+                    nitter.SerializeXML();
+                    
                     nitter.Media.DownloadAllMedia();
                 }
             },{
@@ -71,10 +78,11 @@ public class Program
                         await proxiTok.Scrape(username);
                     }
 
+                    proxiTok.SerializeXML();
+                    
                     proxiTok.Media.DownloadAllMedia();
                 }
-            }
-        };
+            }};
 
         if (!siteNameToFunc.ContainsKey(sitename)) return;
         siteNameToFunc[sitename]();
@@ -84,6 +92,7 @@ public class Program
 
     private void Rescrape()
     {
+        Console.WriteLine("\n" + DateTime.Now.ToString("HH:mm:ss dd/MM", CultureInfo.InvariantCulture));
         Config.LoadConfig();
         foreach (var item in Config.SitesAndUsernames)
         {
@@ -93,8 +102,20 @@ public class Program
             }).Start();
         }
 
+        if (!string.IsNullOrEmpty(Cookies.Invidious))
+        {
+            new Thread(_ =>
+            {
+                invidious.Scrape();
+                invidious.SerializeXML();
+            }).Start();
+        }
+        else
+        {
+            Console.WriteLine("To scrape Invidious, please add your auth token to cookies/invidious.txt in format SID=<value>");
+        }
+
         WriteUrls();
-        Console.WriteLine(DateTime.Now.ToString("HH:mm:ss dd/MM", CultureInfo.InvariantCulture));
     }
 
     private static void WriteUrls()
@@ -103,7 +124,8 @@ public class Program
             "nitter",
             "picuki",
             "picuki_stories",
-            "proxitok"
+            "proxitok",
+            "invidious"
         };
 
         using StreamWriter url_writer = new StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), "rss_urls.txt"));

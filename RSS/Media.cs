@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -8,21 +9,23 @@ namespace RSS;
 
 public class Media
 {
-    private string path;
-    private readonly ConcurrentDictionary<string, string> mediaDict = new ConcurrentDictionary<string, string>();
+    private string pathToJson;
+    private string sitename;
+    private ConcurrentDictionary<string, string> mediaDict = new ConcurrentDictionary<string, string>();
 
     public Media(string siteName)
     {
-        path = Path.Combine(Directory.GetCurrentDirectory(), siteName, "media.json");
-        if (!File.Exists(path))
+        pathToJson = Path.Combine(Directory.GetCurrentDirectory(), siteName, "media.json");
+        sitename = siteName;
+        if (!File.Exists(pathToJson))
             return;
         try
         {
-            mediaDict = JsonSerializer.Deserialize<ConcurrentDictionary<string, string>>(File.ReadAllText(path)) ?? new ConcurrentDictionary<string, string>();
+            mediaDict = JsonSerializer.Deserialize<ConcurrentDictionary<string, string>>(File.ReadAllText(pathToJson)) ?? new ConcurrentDictionary<string, string>();
         }
         catch (JsonException)
         {
-            File.Delete(path);
+            File.Delete(pathToJson);
         }
     }
 
@@ -33,7 +36,7 @@ public class Media
                 WriteIndented = true
             });
 
-        File.WriteAllText(path, jsonString);
+        File.WriteAllText(pathToJson, jsonString);
     }
 
     public void Add(string id, string url)
@@ -49,11 +52,23 @@ public class Media
     public void DownloadAllMedia()
     {
         SaveJson();
+        
+        var mediaFolder = Path.Combine(Path.GetDirectoryName(pathToJson)!, "media");
+        RemoveEmptyFiles(mediaFolder);
+        
+        var xml_content = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), sitename, "rss.xml"));
         new Thread(o =>
         {
-            var mediaFolder = Path.Combine(Path.GetDirectoryName(path)!, "media");
+            var _mediaDict = mediaDict;
             foreach (var (id, _url) in mediaDict)
             {
+                if (!xml_content.Contains($"{Config.Url}/{sitename}/media/{id}")) // removes old media to save space
+                {
+                    File.Delete(Path.Combine(mediaFolder, id));
+                    _mediaDict.Remove(id, out _);
+                    continue;
+                }
+
                 var url = ReplaceUrlPlaceholders(_url);
                 try
                 {
@@ -61,7 +76,7 @@ public class Media
                     
                     DownloadMedia(url, mediaFolder, id);
 
-                    if (!path.Contains("proxitok/media.json")) continue;
+                    if (!pathToJson.Contains("proxitok/media.json")) continue;
 
                     if (Regex.IsMatch(id, @"^\d+_\d+$"))
                     {
@@ -74,7 +89,21 @@ public class Media
                 }
                 catch {}
             }
+
+            mediaDict = _mediaDict;
+            SaveJson();
         }).Start();
+    }
+
+    private static void RemoveEmptyFiles(string mediaFolderPath)
+    {
+        foreach (var path in Directory.GetFiles(mediaFolderPath))
+        {
+            if (new FileInfo(path).Length == 0)
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     private static void CompressImages(string path)

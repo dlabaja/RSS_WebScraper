@@ -26,7 +26,7 @@ public class PicukiStories : Website
                 break;
             }
 
-            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (scrappedIds.Contains(id))
             {
                 Console.WriteLine($"{sitename}/{username}: Story {i + 1} ({time}) already scraped");
                 continue;
@@ -57,8 +57,6 @@ public class PicukiStories : Website
 
             Rss.Channel.Items.Add(item);
         }
-        
-        SerializeXML();
     }
 
     async private static Task<string> CalculateImageHash(string imageUrl)

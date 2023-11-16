@@ -12,7 +12,10 @@ public class Website
     public RSS Rss { get; }
     private string siteFolder { get; }
     protected readonly string relativeMediaFolder;
+    protected readonly string scrappedIdsPath;
+
     protected readonly string sitename;
+    protected List<string> scrappedIds;
 
     protected Website(string sitename, string title, string description, string link, string faviconUrl)
     {
@@ -22,7 +25,22 @@ public class Website
         siteFolder = Path.Combine(Directory.GetCurrentDirectory(), sitename);
         relativeMediaFolder = Path.Combine(sitename, "media");
 
+        if (!Directory.Exists(siteFolder))
+        {
+            Directory.CreateDirectory(siteFolder);
+        }
+        
         Directory.CreateDirectory(Path.Combine(siteFolder, "media"));
+
+        scrappedIdsPath = Path.Combine(siteFolder, "scrapped_ids.txt");
+        if (!File.Exists(scrappedIdsPath))
+        {
+            File.Create(scrappedIdsPath).Close();
+        }
+
+        using StreamReader sr = new StreamReader(scrappedIdsPath);
+        scrappedIds = File.ReadAllLines(scrappedIdsPath).ToList();
+
         Rss = GetRSS(title, description, link, faviconUrl);
     }
 
@@ -46,28 +64,51 @@ public class Website
         };
     }
 
-    protected void SerializeXML()
+    public void SerializeXML()
     {
         Media.SaveJson();
-        
-        XmlSerializer serializer = new XmlSerializer(typeof(RSS));
         var filePath = Path.Combine(siteFolder, "rss.xml");
 
-        if (!Directory.Exists(siteFolder))
+        XmlSerializer serializer = new XmlSerializer(typeof(RSS));
+
+        if (Rss.Channel.Items.Count != 0)
         {
-            Directory.CreateDirectory(siteFolder);
+            try
+            {
+                try
+                {
+                    Rss.Channel.Items.RemoveAll(x => !Config.SitesAndUsernames[sitename].Contains(x.Author));
+                }catch{}
+
+                Rss.Channel.Items.Sort((x, y) => DateTime.Parse(x.PubDate).CompareTo(DateTime.Parse(y.PubDate)));
+
+                SaveScrappedIds();
+
+                int count = Math.Min(20, Rss.Channel.Items.Count);
+                Rss.Channel.Items = Rss.Channel.Items.ToArray()[^count..].ToList();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
 
         using var writer = new StreamWriter(filePath);
-        try
-        {
-            Rss.Channel.Items.RemoveAll(x => !Config.SitesAndUsernames[sitename].Contains(x.Author));
-        }
-        catch {}
-
-        Rss.Channel.Items.Sort((x, y) => DateTime.Parse(x.PubDate).CompareTo(DateTime.Parse(y.PubDate)));
         serializer.Serialize(writer, Rss);
+        GenerateRSSHeaders(filePath);
+        Console.WriteLine($"RSS file serialized as {filePath}");
+    }
 
+    private void SaveScrappedIds()
+    {
+        using StreamWriter sw = File.AppendText(scrappedIdsPath);
+        foreach (var id in Rss.Channel.Items.Select(x => x.GUID))
+            if (!scrappedIds.Contains(id))
+                sw.WriteLine(id);
+    }
+
+    private void GenerateRSSHeaders(string filePath)
+    {
         var doc = new XmlDocument();
         doc.Load(filePath);
 
@@ -93,13 +134,12 @@ public class Website
         }
 
         doc.Save(filePath);
-
-        Console.WriteLine($"RSS file serialized as {filePath}");
     }
 
     private RSS DeserializeXML()
     {
         var path = Path.Combine(Directory.GetCurrentDirectory(), sitename, "rss.xml");
+
         var xmlData = File.ReadAllText(path);
         var serializer = new XmlSerializer(typeof(RSS));
 

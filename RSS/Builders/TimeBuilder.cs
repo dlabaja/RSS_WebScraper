@@ -26,7 +26,7 @@ public static class TimeBuilder
         return DateTimeToPubDateFormat(DateTime.Now - TimeSpan.FromMinutes(minutesToRemove));
     }
 
-    private static string? DateTimeToPubDateFormat(DateTime dateTime)
+    public static string DateTimeToPubDateFormat(DateTime dateTime)
     {
         return dateTime.ToString("ddd, dd MMM yyyy HH:mm:ss K", CultureInfo.InvariantCulture);
     }

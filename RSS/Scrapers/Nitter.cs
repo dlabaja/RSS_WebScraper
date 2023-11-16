@@ -1,7 +1,6 @@
 using HtmlAgilityPack;
 using RSS.Builders;
 using System.Text.RegularExpressions;
-using System.Web;
 
 namespace RSS.Scrapers;
 
@@ -27,13 +26,13 @@ public class Nitter : Website
         foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
         {
             var id = Regex.Match(postUrl, @"/status/(\d+)").Groups[1].Value;
-            if (Rss.Channel.Items.Select(x => x.GUID).Contains(id))
+            if (scrappedIds.Contains(id))
             {
                 Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
                 continue;
             }
 
-            var post = GetHTMLDocument(postUrl, "hlsPlayback=on").DocumentNode;
+            var post = GetHTMLDocument(postUrl, Cookies.Nitter).DocumentNode;
             Console.WriteLine($"{sitename}/{username}: Scraping post {i + 1}/{count}");
 
             var title = new DescriptionBuilder(Media)
@@ -50,8 +49,6 @@ public class Nitter : Website
             };
             Rss.Channel.Items.Add(item);
         }
-
-        SerializeXML();
     }
 
     private static string CutString(string str, int lastIndex)
