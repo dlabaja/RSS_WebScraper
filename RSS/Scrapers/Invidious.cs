@@ -32,7 +32,7 @@ public class Invidious : Website
                     PubDate = TimeBuilder.DateTimeToPubDateFormat(DateTime.Now - TimeSpan.FromMinutes(i)),
                     GUID = id,
                     Description = new DescriptionBuilder(Media)
-                        .AddParagraph($"<a href='{postUrl}'>Nové video od kanálu <b>{doc.SelectNodes("//p[@class='channel-name']")[i].InnerText.Trim()}</b></a>").ToString()
+                        .AddParagraph($"<a href='{postUrl}'>New video from channel <b>{doc.SelectNodes("//p[@class='channel-name']")[i].InnerText.Trim()}</b></a>").ToString()
                 };
                 Rss.Channel.Items.Add(item);
             }

@@ -12,7 +12,7 @@ public class Website
     public RSS Rss { get; }
     private string siteFolder { get; }
     protected readonly string relativeMediaFolder;
-    protected readonly string scrappedIdsPath;
+    private readonly string scrappedIdsPath;
 
     protected readonly string sitename;
     protected List<string> scrappedIds;
@@ -80,7 +80,7 @@ public class Website
                     Rss.Channel.Items.RemoveAll(x => !Config.SitesAndUsernames[sitename].Contains(x.Author));
                 }catch{}
 
-                Rss.Channel.Items.Sort((x, y) => DateTime.Parse(x.PubDate).CompareTo(DateTime.Parse(y.PubDate)));
+                Rss.Channel.Items.Sort((x, y) => DateTime.Parse(x.PubDate!).CompareTo(DateTime.Parse(y.PubDate!)));
 
                 SaveScrappedIds();
 
@@ -104,7 +104,10 @@ public class Website
         using StreamWriter sw = File.AppendText(scrappedIdsPath);
         foreach (var id in Rss.Channel.Items.Select(x => x.GUID))
             if (!scrappedIds.Contains(id))
+            {
                 sw.WriteLine(id);
+                scrappedIds.Add(id);
+            }
     }
 
     private void GenerateRSSHeaders(string filePath)
