@@ -1,12 +1,13 @@
 # RSS_WebScraper
 A small tool for fixing my social media addiction.
 
-Follow only people you want without being tracked by algorithms or third parties
+Follow only people you want without being tracked by third parties or distracted by addicting algorithms
 
 Supports:\
 Picuki (Instagram)\
 Nitter (Twitter/X)\
-ProxiTok (Tiktok)
+ProxiTok (Tiktok)\
+Invidious (YouTube)
 
 Installation:
 1. Get the release from [here](https://github.com/dlabaja/RSS_WebScraper/releases/latest)
@@ -18,6 +19,7 @@ Installation:
 - scrape_timer - how many minutes it take to rescrape
 - nitter_instance - [listed here](https://github.com/zedeus/nitter/wiki/Instances), default nitter.net
 - proxitok_instance - [listed here](https://github.com/pablouser1/ProxiTok/wiki/Public-instances), default proxitok.pabloferreiro.es
+- invidious_instance - [listed here](https://docs.invidious.io/instances), default invidious.poast.org
 - sites_and_usernames - put all accounts you want to scrape to the list. Picuki_stories_blacklist ignores stories and nitter_replies_blacklist ignores user replies
 4. Run the start.sh script (ideally on system boot)
 5. After scraping, all rss urls are located in rss_urls.txt
