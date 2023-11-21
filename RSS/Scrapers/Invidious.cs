@@ -21,6 +21,12 @@ public class Invidious : Website
                 continue;
             }
 
+            if (Config.InvidiousFilterShorts && !doc.SelectNodes("//div[@class='bottom-right-overlay']")[i].HasChildNodes)
+            {
+                Console.WriteLine($"{sitename}: Post {i + 1}/{count} is a short, skipping");
+                continue;
+            }
+
             Console.WriteLine($"{sitename}: Scraping post {i + 1}/{count}");
 
             try
@@ -32,7 +38,7 @@ public class Invidious : Website
                     PubDate = TimeBuilder.DateTimeToPubDateFormat(DateTime.Now - TimeSpan.FromMinutes(i)),
                     GUID = id,
                     Description = new DescriptionBuilder(Media)
-                        .AddParagraph($"<a href='{postUrl}'>New video from channel <b>{doc.SelectNodes("//p[@class='channel-name']")[i].InnerText.Trim()}</b></a>").ToString()
+                        .AddParagraph($"<a href=\"{postUrl}\">New video from channel <b>{doc.SelectNodes("//p[@class='channel-name']")[i].InnerText.Trim()}</b></a>").ToString()
                 };
                 Rss.Channel.Items.Add(item);
             }
