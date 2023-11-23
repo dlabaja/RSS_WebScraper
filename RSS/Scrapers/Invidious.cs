@@ -21,7 +21,7 @@ public class Invidious : Website
                 continue;
             }
 
-            if (Config.InvidiousFilterShorts && !doc.SelectNodes("//div[@class='bottom-right-overlay']")[i].HasChildNodes)
+            if (Config.InvidiousFilterShorts && doc.SelectNodes("//div[@class='bottom-right-overlay']")[i].ChildNodes.Count == 1)
             {
                 Console.WriteLine($"{sitename}: Post {i + 1}/{count} is a short, skipping");
                 continue;
