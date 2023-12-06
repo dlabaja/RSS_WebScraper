@@ -15,7 +15,7 @@ public class PicukiStories : Website
         if (doc.InnerHtml.Contains("<title>Error 403</title>")) return; // 403 error, skip profile
 
         var userId = Regex.Match(doc.InnerHtml, @"let\s+query\s*=\s*'(\d+)'").Groups[1].Value;
-        var stories = ScrapeStories($"{Config.CurlImpersonateScriptLocation} -X POST https://www.picuki.com/app/controllers/ajax.php -d username={username} -d query={userId} -d type=story");
+        var stories = ScrapeStories($"{Config.CurlImpersonateScriptLocation} -X POST https://www.picuki.com/app/controllers/ajax.php -d username={username} -d query={userId} -d type=story -d bypass=ssshg");
         foreach (var (story, i) in stories.WithIndex())
         {
             var id = await CalculateImageHash(Regex.Match(story, "data-video-poster=\"([^\"]*)\"").Groups[1].Value);
