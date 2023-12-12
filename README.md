@@ -20,6 +20,7 @@ Installation:
 - nitter_instance - [listed here](https://github.com/zedeus/nitter/wiki/Instances), default nitter.net
 - proxitok_instance - [listed here](https://github.com/pablouser1/ProxiTok/wiki/Public-instances), default proxitok.pabloferreiro.es
 - invidious_instance - [listed here](https://docs.invidious.io/instances), default invidious.poast.org
+- invidious_filter_shorts - true if you don't want shorts from followed channels in your feed, otherwise false
   - scrapes all accounts you subscribed to on the specific instance
   - to make it work, get your SID cookie value (Press F12 on the instance page -> Storage -> Cookies) and copy it into cookies/invidious.txt in format SID=value_of_the_cookie.
 - sites_and_usernames - put all accounts you want to scrape to the list. Picuki_stories_blacklist ignores stories and nitter_replies_blacklist ignores user replies
