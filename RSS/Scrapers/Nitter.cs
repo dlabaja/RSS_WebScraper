@@ -22,33 +22,36 @@ public class Nitter : Website
         }
         catch { return; }
 
-        var count = doc.SelectNodes("//div[@class='timeline-item ']").Count;
-        foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
+        try
         {
-            var id = Regex.Match(postUrl, @"/status/(\d+)").Groups[1].Value;
-            if (scrappedIds.Contains(id))
+            var count = doc.SelectNodes("//div[@class='timeline-item ']").Count;
+            foreach (var (postUrl, i) in doc.SelectNodes("//div[@class='timeline-item ']/a").Select(x => Config.NitterInstance + x.GetAttributeValue("href", "")).WithIndex())
             {
-                Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
-                continue;
+                var id = Regex.Match(postUrl, @"/status/(\d+)").Groups[1].Value;
+                if (scrappedIds.Contains(id))
+                {
+                    Console.WriteLine($"{sitename}/{username}: Post {i + 1}/{count} already scraped");
+                    continue;
+                }
+
+                var post = GetHTMLDocument(postUrl, Cookies.Nitter).DocumentNode;
+                Console.WriteLine($"{sitename}/{username}: Scraping post {i + 1}/{count}");
+
+                var title = new DescriptionBuilder(Media)
+                    .AddSpanOrEmpty($"[🔁 {post.SelectNodes("//a[@class='fullname']")?[0].InnerText}] ", doc.SelectNodes("//div[@class='timeline-item ']")[i]?.InnerHtml.Contains("class=\"retweet-header\"") ?? false, false)
+                    .AddParagraph($"{doc.SelectNodes("//div[@class='tweet-content media-body']")[i].InnerText}").ToString();
+
+                var item = new Item{
+                    Title = title.Length > 31 ? CutString(title, 30) + "..." : title,
+                    Link = postUrl,
+                    Author = username,
+                    GUID = id,
+                    PubDate = TimeBuilder.ParseNitterTime(post.SelectSingleNode("//p[@class='tweet-published']").InnerText),
+                    Description = ScrapeThreads(post)
+                };
+                Rss.Channel.Items.Add(item);
             }
-
-            var post = GetHTMLDocument(postUrl, Cookies.Nitter).DocumentNode;
-            Console.WriteLine($"{sitename}/{username}: Scraping post {i + 1}/{count}");
-
-            var title = new DescriptionBuilder(Media)
-                .AddSpanOrEmpty($"[🔁 {post.SelectNodes("//a[@class='fullname']")?[0].InnerText}] ", doc.SelectNodes("//div[@class='timeline-item ']")[i]?.InnerHtml.Contains("class=\"retweet-header\"") ?? false, false)
-                .AddParagraph($"{doc.SelectNodes("//div[@class='tweet-content media-body']")[i].InnerText}").ToString();
-
-            var item = new Item{
-                Title = title.Length > 31 ? CutString(title, 30) + "..." : title,
-                Link = postUrl,
-                Author = username,
-                GUID = id,
-                PubDate = TimeBuilder.ParseNitterTime(post.SelectSingleNode("//p[@class='tweet-published']").InnerText),
-                Description = ScrapeThreads(post)
-            };
-            Rss.Channel.Items.Add(item);
-        }
+        }catch(Exception e){ Console.WriteLine(e); }
     }
 
     private static string CutString(string str, int lastIndex)
